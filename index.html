@@ -21,6 +21,7 @@ input,textarea{width:100%;padding:12px 14px;border:1px solid var(--line);border-
 textarea{resize:none}
 input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:700}
+button:disabled{opacity:.6}
 .primary{background:var(--accent);color:var(--accent-text)}
 .ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
 #auth{min-height:100%;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -34,10 +35,11 @@ header{display:flex;align-items:center;justify-content:space-between;gap:8px;pad
 .ttl{min-width:0}
 header b{font-size:18px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 header small{display:block;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+header small.on,#mStatus.on{color:#16a34a}
 .hb{display:flex;gap:6px;flex-shrink:0}
 .hb button{padding:8px 10px;font-size:14px}
 #tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line)}
-.tab{flex:1;border-radius:0;background:transparent;color:var(--muted);padding:10px;border-bottom:3px solid transparent}
+.tab{flex:1;border-radius:0;background:transparent;color:var(--muted);padding:10px 4px;font-size:14px;border-bottom:3px solid transparent}
 .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
 #panel{background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;max-height:30%;overflow-y:auto}
 #panel h2,#people h2{margin:0 0 8px;font-size:15px}
@@ -47,13 +49,17 @@ header small{display:block;color:var(--muted);overflow:hidden;text-overflow:elli
 .item{display:flex;align-items:center;gap:10px;width:100%;text-align:right;background:var(--card);color:var(--text);border:1px solid var(--line);margin-bottom:6px;padding:10px 12px;border-radius:12px}
 .it{min-width:0;flex:1}
 .item small{display:block;color:var(--muted);font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.av{width:38px;height:38px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0}
+.avw{position:relative;flex-shrink:0;display:flex}
+.av{width:38px;height:38px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden}
 .av img{width:100%;height:100%;object-fit:cover}
 .av.big{width:76px;height:76px;font-size:30px}
+.dot{position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;background:#22c55e;border:2px solid var(--card)}
+.big~.dot{width:16px;height:16px}
 .ban{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
 #profile{flex:1;overflow-y:auto;padding:16px;display:grid;gap:8px;align-content:start}
 #profile label{font-size:14px;color:var(--muted);margin-top:6px}
 .pfhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#pfLvl{color:var(--muted);font-size:14px}
 #pfMsg{min-height:20px;font-size:14px}
 .ok{color:#15803d}.bad{color:#d14343}
 #list{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
@@ -64,8 +70,10 @@ header small{display:block;color:var(--muted);overflow:hidden;text-overflow:elli
 .line .av{width:32px;height:32px;font-size:14px}
 .msg{padding:8px 12px;border-radius:14px;background:var(--other);border:1px solid var(--line);overflow-wrap:anywhere;min-width:0}
 .line.mine .msg{background:var(--accent);color:var(--accent-text);border-color:transparent}
-.msg .who{font-size:12px;font-weight:700;opacity:.8;margin-bottom:2px}
+.msg .who{font-size:12px;font-weight:700;opacity:.85;margin-bottom:2px}
 .msg .who span{font-weight:400;opacity:.8}
+.msg .who .lvb{font-size:10px;font-weight:700;background:var(--accent);color:var(--accent-text);border-radius:6px;padding:0 5px;margin-inline-start:4px;opacity:1}
+.line.mine .who .lvb{background:var(--accent-text);color:var(--accent)}
 .msg img{display:block;max-width:100%;max-height:280px;border-radius:10px;margin-top:4px}
 .msg a{color:inherit;text-decoration:underline;display:block;margin-top:4px}
 .bar{display:flex;gap:6px;margin-top:6px}
@@ -74,6 +82,18 @@ header small{display:block;color:var(--muted);overflow:hidden;text-overflow:elli
 #chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #send{display:flex;gap:8px;padding:10px 12px;background:var(--card);border-top:1px solid var(--line)}
 #send button{white-space:nowrap}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sheet{width:100%;max-width:720px;background:var(--card);border-radius:18px 18px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;justify-items:center;text-align:center;max-height:92%;overflow-y:auto}
+.sheet .row,.sheet .lv{width:100%}
+.sheet>.ghost{width:100%}
+#mName{font-size:20px}
+#mUser,#mStatus,#mCnt{color:var(--muted);font-size:14px}
+#mBio{overflow-wrap:anywhere}
+.bar2{height:8px;background:var(--line);border-radius:8px;overflow:hidden;margin:4px 0}
+.bar2 i{display:block;height:100%;background:var(--accent)}
+.stats{display:flex;gap:28px}
+.stats div{display:grid}
+.stats span{color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
@@ -105,6 +125,7 @@ header small{display:block;color:var(--muted);overflow:hidden;text-overflow:elli
   <div id="tabs">
     <button class="tab on" id="tabPub">العامة</button>
     <button class="tab" id="tabPriv">الخاصة</button>
+    <button class="tab" id="tabSaved">المحفوظة</button>
     <button class="tab" id="tabProf">حسابي</button>
   </div>
   <div id="panel" class="hidden">
@@ -124,6 +145,7 @@ header small{display:block;color:var(--muted);overflow:hidden;text-overflow:elli
       <button type="button" class="ghost" id="pfPick">تغيير الصورة</button>
       <button type="button" class="ghost" id="pfDel">حذف الصورة</button>
     </div>
+    <div id="pfLvl"></div>
     <input id="pfPhoto" type="file" accept="image/*" class="hidden">
     <label for="pfName">الاسم</label>
     <input id="pfName" type="text" maxlength="30" autocomplete="off">
@@ -133,6 +155,7 @@ header small{display:block;color:var(--muted);overflow:hidden;text-overflow:elli
     <textarea id="pfBio" rows="3" maxlength="150"></textarea>
     <div id="pfMsg"></div>
     <button type="button" class="primary" id="pfSave">حفظ</button>
+    <button type="button" class="ghost" id="pfView">عرض ملفي كما يراه الآخرون</button>
   </div>
   <div id="list"></div>
   <div id="chip" class="hidden"><span id="chipName"></span><button type="button" class="mini" id="chipX">إلغاء</button></div>
@@ -144,13 +167,37 @@ header small{display:block;color:var(--muted);overflow:hidden;text-overflow:elli
   </form>
 </section>
 
+<div id="modal" class="hidden">
+  <div class="sheet">
+    <div id="mAv"></div>
+    <b id="mName"></b>
+    <div id="mUser"></div>
+    <div id="mStatus"></div>
+    <div id="mBio"></div>
+    <div class="lv">
+      <b id="mLvl"></b>
+      <div class="bar2"><i id="mBar"></i></div>
+      <div id="mCnt"></div>
+    </div>
+    <div class="stats">
+      <div><b id="mFers">0</b><span>متابِعون</span></div>
+      <div><b id="mFing">0</b><span>يتابع</span></div>
+    </div>
+    <div class="row">
+      <button type="button" class="primary" id="mFollow">متابعة</button>
+      <button type="button" class="ghost" id="mMsg">مراسلة</button>
+    </div>
+    <button type="button" class="ghost" id="mClose">إغلاق</button>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
   signInWithEmailAndPassword, signOut, updateProfile }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, setDoc, deleteDoc, addDoc, writeBatch,
-  query, orderBy, limit, onSnapshot, serverTimestamp }
+import { getFirestore, collection, doc, getDoc, setDoc, deleteDoc, writeBatch, increment,
+  query, where, orderBy, limit, onSnapshot, serverTimestamp, getCountFromServer }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -166,6 +213,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const $ = (id) => document.getElementById(id);
+const LV = 2000;
 
 const errors = {
   "auth/invalid-credential": "البريد أو كلمة المرور غير صحيحة.",
@@ -177,6 +225,69 @@ const errors = {
 };
 const showError = (e) => { $("err").textContent = errors[e.code] || "حدث خطأ. حاول مرة ثانية."; };
 
+let me = null, isAdmin = false, mode = "public", peer = null, pending = null;
+let unsubMsgs = null, unsubBan = null, unsubUsers = null, unsubInbox = null, unsubPres = null, beatTimer = null;
+let usersMap = {}, presenceMap = {}, lastMsgSnap = null, lastOpts = null, lastInboxSnap = null, pfPhoto = "";
+let modalUid = null, modalTok = 0, followState = false;
+
+const myName = () => (me && me.displayName) || "مستخدم";
+const chatIdWith = (uid) => [me.uid, uid].sort().join("_");
+const lvlOf = (c) => Math.floor((c || 0) / LV) + 1;
+
+/* ---------- الحالة (متصل / آخر ظهور) ---------- */
+function isOnline(uid) {
+  const p = presenceMap[uid];
+  return !!(p && p.on && Date.now() - p.t < 240000);
+}
+
+function seenText(uid) {
+  if (isOnline(uid)) return "متصل الآن";
+  const p = presenceMap[uid];
+  if (!p || !p.t) return "غير متصل";
+  const d = new Date(p.t), now = new Date();
+  const tm = d.toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" });
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const that = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diff = Math.round((today - that) / 86400000);
+  if (diff <= 0) return "آخر ظهور اليوم " + tm;
+  if (diff === 1) return "آخر ظهور أمس " + tm;
+  return "آخر ظهور " + d.toLocaleDateString("ar") + " " + tm;
+}
+
+function beat(on) {
+  if (!me) return Promise.resolve();
+  return setDoc(doc(db, "presence", me.uid), { t: serverTimestamp(), on }).catch(() => {});
+}
+function startBeat() {
+  stopBeat();
+  beat(document.visibilityState === "visible");
+  beatTimer = setInterval(() => { if (document.visibilityState === "visible") beat(true); }, 120000);
+}
+function stopBeat() { if (beatTimer) { clearInterval(beatTimer); beatTimer = null; } }
+document.addEventListener("visibilitychange", () => { if (me) beat(document.visibilityState === "visible"); });
+window.addEventListener("pagehide", () => { if (me) beat(false); });
+
+function updateSub() {
+  if (!me) return;
+  const s = $("me");
+  if (mode === "dm" && peer) {
+    s.textContent = seenText(peer.uid);
+    s.className = isOnline(peer.uid) ? "on" : "";
+  } else {
+    s.textContent = (me.displayName || me.email) + (isAdmin ? " (مدير)" : "");
+    s.className = "";
+  }
+}
+
+function refreshPresenceUI() {
+  if (!me) return;
+  if (mode === "people") { renderUserList(); if (lastInboxSnap) renderInbox(lastInboxSnap); }
+  updateSub();
+  if (modalUid && !$("modal").classList.contains("hidden")) drawModalStatus();
+}
+setInterval(refreshPresenceUI, 60000);
+
+/* ---------- الدخول ---------- */
 $("authForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   $("err").textContent = "";
@@ -191,20 +302,12 @@ $("signupBtn").addEventListener("click", async () => {
   try {
     const cred = await createUserWithEmailAndPassword(auth, $("email").value.trim(), $("pass").value);
     await updateProfile(cred.user, { displayName: name });
-    $("me").textContent = name;
     await setDoc(doc(db, "users", cred.user.uid), { name }, { merge: true });
   } catch (err) { showError(err); }
 });
 
-$("logout").addEventListener("click", () => signOut(auth));
+$("logout").addEventListener("click", async () => { await beat(false); signOut(auth); });
 $("adminBtn").addEventListener("click", () => $("panel").classList.toggle("hidden"));
-
-let me = null, isAdmin = false, mode = "public", peer = null, pending = null;
-let unsubMsgs = null, unsubBan = null, unsubUsers = null, unsubInbox = null;
-let usersMap = {}, lastMsgSnap = null, lastTools = false, lastInboxSnap = null, pfPhoto = "";
-
-const myName = () => (me && me.displayName) || "مستخدم";
-const chatIdWith = (uid) => [me.uid, uid].sort().join("_");
 
 function emptyNote(box, text) {
   const d = document.createElement("div");
@@ -213,7 +316,9 @@ function emptyNote(box, text) {
   box.appendChild(d);
 }
 
-function avatarEl(photo, name, extra) {
+function avatarEl(photo, name, extra, uid, noClick) {
+  const w = document.createElement("div");
+  w.className = "avw";
   const d = document.createElement("div");
   d.className = "av" + (extra ? " " + extra : "");
   if (photo) {
@@ -224,7 +329,17 @@ function avatarEl(photo, name, extra) {
   } else {
     d.textContent = ((name || "?").trim().charAt(0) || "?").toUpperCase();
   }
-  return d;
+  w.appendChild(d);
+  if (uid && isOnline(uid)) {
+    const dot = document.createElement("i");
+    dot.className = "dot";
+    w.appendChild(dot);
+  }
+  if (uid && !noClick) {
+    w.style.cursor = "pointer";
+    w.onclick = (e) => { e.stopPropagation(); openProfile(uid); };
+  }
+  return w;
 }
 
 function showDenied() {
@@ -314,12 +429,22 @@ $("file").addEventListener("change", async () => {
 });
 
 /* ---------- عرض الرسائل ---------- */
-function renderMsgs(snap, tools) {
+async function saveCopy(m, u) {
+  const n = { uid: me.uid, name: myName(), text: m.text || "", from: u.name || m.name || "", createdAt: serverTimestamp() };
+  if (m.image) n.image = m.image;
+  if (m.fileData) { n.fileName = m.fileName || "file"; n.fileData = m.fileData; }
+  await setDoc(doc(collection(db, "users", me.uid, "saved")), n);
+}
+
+function renderMsgs(snap, opts) {
   lastMsgSnap = snap;
-  lastTools = tools;
+  lastOpts = opts;
   const list = $("list");
   list.textContent = "";
-  if (snap.empty) { emptyNote(list, "لا توجد رسائل بعد. اكتب أول رسالة."); return; }
+  if (snap.empty) {
+    emptyNote(list, opts.saved ? "لا توجد رسائل محفوظة. اكتب ملاحظة أو احفظ رسالة من أي دردشة." : "لا توجد رسائل بعد. اكتب أول رسالة.");
+    return;
+  }
   snap.docs.slice().reverse().forEach((d) => {
     const m = d.data({ serverTimestamps: "estimate" });
     const u = usersMap[m.uid] || {};
@@ -329,11 +454,21 @@ function renderMsgs(snap, tools) {
     box.className = "msg";
     const who = document.createElement("div");
     who.className = "who";
-    who.textContent = u.name || m.name || "مستخدم";
-    if (u.username) {
-      const un = document.createElement("span");
-      un.textContent = " @" + u.username;
-      who.appendChild(un);
+    if (opts.saved) {
+      who.textContent = m.from ? "من: " + m.from : "ملاحظة";
+    } else {
+      who.textContent = u.name || m.name || "مستخدم";
+      if (u.username) {
+        const un = document.createElement("span");
+        un.textContent = " @" + u.username;
+        who.appendChild(un);
+      }
+      const lb = document.createElement("span");
+      lb.className = "lvb";
+      lb.textContent = "Lv " + lvlOf(u.msgCount);
+      who.appendChild(lb);
+      who.style.cursor = "pointer";
+      who.onclick = () => openProfile(m.uid);
     }
     box.appendChild(who);
     if (m.text) {
@@ -354,31 +489,45 @@ function renderMsgs(snap, tools) {
       a.textContent = "📎 " + (m.fileName || "ملف");
       box.appendChild(a);
     }
-    if (tools) {
-      const bar = document.createElement("div");
-      bar.className = "bar";
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    if (opts.saved) {
       const del = document.createElement("button");
       del.className = "mini";
       del.textContent = "حذف";
-      del.onclick = () => {
-        if (confirm("حذف هذه الرسالة؟")) deleteDoc(d.ref).catch(console.error);
-      };
+      del.onclick = () => { if (confirm("حذف من المحفوظات؟")) deleteDoc(d.ref).catch(console.error); };
       bar.appendChild(del);
-      if (m.uid !== me.uid) {
-        const ban = document.createElement("button");
-        ban.className = "mini";
-        ban.textContent = "حظر";
-        ban.onclick = () => {
-          if (confirm("حظر " + (u.name || m.name || "هذا المستخدم") + "؟")) {
-            setDoc(doc(db, "banned", m.uid), { name: u.name || m.name || "", at: serverTimestamp() })
-              .catch(console.error);
-          }
-        };
-        bar.appendChild(ban);
+    } else {
+      const sv = document.createElement("button");
+      sv.className = "mini";
+      sv.textContent = "حفظ";
+      sv.onclick = async () => {
+        try { await saveCopy(m, u); sv.textContent = "تم ✓"; }
+        catch (e) { console.error(e); alert("تعذر الحفظ."); }
+      };
+      bar.appendChild(sv);
+      if (opts.admin) {
+        const del = document.createElement("button");
+        del.className = "mini";
+        del.textContent = "حذف";
+        del.onclick = () => { if (confirm("حذف هذه الرسالة؟")) deleteDoc(d.ref).catch(console.error); };
+        bar.appendChild(del);
+        if (m.uid !== me.uid) {
+          const ban = document.createElement("button");
+          ban.className = "mini";
+          ban.textContent = "حظر";
+          ban.onclick = () => {
+            if (confirm("حظر " + (u.name || m.name || "هذا المستخدم") + "؟")) {
+              setDoc(doc(db, "banned", m.uid), { name: u.name || m.name || "", at: serverTimestamp() })
+                .catch(console.error);
+            }
+          };
+          bar.appendChild(ban);
+        }
       }
-      box.appendChild(bar);
     }
-    line.append(avatarEl(u.photo, u.name || m.name), box);
+    box.appendChild(bar);
+    line.append(avatarEl(u.photo, u.name || m.name, "", opts.saved ? null : m.uid), box);
     list.appendChild(line);
   });
   list.scrollTop = list.scrollHeight;
@@ -402,7 +551,7 @@ function renderBanned(snap) {
   });
 }
 
-function item(name, sub, photo, onClick) {
+function item(name, sub, photo, uid, onClick) {
   const b = document.createElement("button");
   b.className = "item";
   const t = document.createElement("div");
@@ -415,7 +564,7 @@ function item(name, sub, photo, onClick) {
     s.textContent = sub;
     t.appendChild(s);
   }
-  b.append(avatarEl(photo, name), t);
+  b.append(avatarEl(photo, name, "", uid), t);
   b.onclick = onClick;
   return b;
 }
@@ -429,10 +578,10 @@ function renderUserList() {
     .map((id) => Object.assign({ uid: id }, usersMap[id]))
     .filter((u) => !term || (u.name || "").toLowerCase().includes(term) || (u.username || "").includes(term));
   if (!users.length) { emptyNote(box, term ? "لا توجد نتائج." : "لا يوجد مستخدمون آخرون بعد. ادعُ أصدقاءك للتسجيل."); return; }
-  users.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  users.sort((a, b) => (isOnline(b.uid) - isOnline(a.uid)) || (a.name || "").localeCompare(b.name || ""));
   users.forEach((u) => {
     const sub = (u.username ? "@" + u.username : "") + (u.bio ? (u.username ? " - " : "") + u.bio : "");
-    box.appendChild(item(u.name || "مستخدم", sub, u.photo, () => setMode("dm", { uid: u.uid, name: u.name || "مستخدم" })));
+    box.appendChild(item(u.name || "مستخدم", sub, u.photo, u.uid, () => setMode("dm", { uid: u.uid, name: u.name || "مستخدم" })));
   });
 }
 
@@ -441,7 +590,8 @@ function renderUsers(snap) {
   snap.forEach((d) => { usersMap[d.id] = d.data(); });
   renderUserList();
   if (lastInboxSnap) renderInbox(lastInboxSnap);
-  if (lastMsgSnap && (mode === "public" || mode === "dm")) renderMsgs(lastMsgSnap, lastTools);
+  if (lastMsgSnap && lastOpts && (mode === "public" || mode === "dm")) renderMsgs(lastMsgSnap, lastOpts);
+  if (mode === "profile") drawLvl();
 }
 
 function renderInbox(snap) {
@@ -457,16 +607,119 @@ function renderInbox(snap) {
   });
   if (!rows.length) { emptyNote(box, "لا توجد محادثات بعد. اختر مستخدماً من القائمة."); return; }
   rows.sort((a, b) => b.t - a.t);
-  rows.forEach((r) => box.appendChild(item(r.name, r.text, r.photo, () => setMode("dm", { uid: r.uid, name: r.name }))));
+  rows.forEach((r) => box.appendChild(item(r.name, r.text, r.photo, r.uid, () => setMode("dm", { uid: r.uid, name: r.name }))));
 }
 
 $("q").addEventListener("input", renderUserList);
 
-/* ---------- الملف الشخصي ---------- */
+/* ---------- بطاقة الملف الشخصي ---------- */
+function drawModalStatus() {
+  const s = $("mStatus");
+  s.textContent = seenText(modalUid);
+  s.className = isOnline(modalUid) ? "on" : "";
+  const u = usersMap[modalUid] || {};
+  $("mAv").textContent = "";
+  $("mAv").appendChild(avatarEl(u.photo, u.name, "big", modalUid, true));
+}
+
+function drawFollow() {
+  const b = $("mFollow");
+  b.textContent = followState ? "إلغاء المتابعة" : "متابعة";
+  b.className = followState ? "ghost" : "primary";
+}
+
+function closeModal() {
+  modalUid = null;
+  modalTok++;
+  $("modal").classList.add("hidden");
+}
+
+async function openProfile(uid) {
+  if (!me) return;
+  modalUid = uid;
+  const tok = ++modalTok;
+  const u = usersMap[uid] || {};
+  const self = uid === me.uid;
+  const c = u.msgCount || 0;
+  $("modal").classList.remove("hidden");
+  $("mName").textContent = u.name || "مستخدم";
+  $("mUser").textContent = u.username ? "@" + u.username : "";
+  $("mBio").textContent = u.bio || "";
+  $("mLvl").textContent = "المستوى " + lvlOf(c);
+  $("mBar").style.width = ((c % LV) / LV * 100) + "%";
+  $("mCnt").textContent = (c % LV) + " / " + LV + " رسالة للمستوى التالي";
+  $("mFers").textContent = "…";
+  $("mFing").textContent = "…";
+  $("mFollow").classList.toggle("hidden", self);
+  $("mMsg").classList.toggle("hidden", self);
+  $("mFollow").disabled = true;
+  followState = false;
+  drawFollow();
+  drawModalStatus();
+  try {
+    const [a, b] = await Promise.all([
+      getCountFromServer(query(collection(db, "follows"), where("to", "==", uid))),
+      getCountFromServer(query(collection(db, "follows"), where("from", "==", uid)))
+    ]);
+    if (tok !== modalTok) return;
+    $("mFers").textContent = a.data().count;
+    $("mFing").textContent = b.data().count;
+    if (!self) {
+      const s = await getDoc(doc(db, "follows", me.uid + "_" + uid));
+      if (tok !== modalTok) return;
+      followState = s.exists();
+      drawFollow();
+      $("mFollow").disabled = false;
+    }
+  } catch (e) {
+    console.error(e);
+    if (tok === modalTok) { $("mFers").textContent = "-"; $("mFing").textContent = "-"; }
+  }
+}
+
+$("mFollow").addEventListener("click", async () => {
+  if (!modalUid || modalUid === me.uid) return;
+  const ref = doc(db, "follows", me.uid + "_" + modalUid);
+  $("mFollow").disabled = true;
+  try {
+    const n = +$("mFers").textContent || 0;
+    if (followState) {
+      await deleteDoc(ref);
+      followState = false;
+      $("mFers").textContent = Math.max(0, n - 1);
+    } else {
+      await setDoc(ref, { from: me.uid, to: modalUid, at: serverTimestamp() });
+      followState = true;
+      $("mFers").textContent = n + 1;
+    }
+    drawFollow();
+  } catch (e) {
+    console.error(e);
+    alert("تعذر تنفيذ العملية.");
+  }
+  $("mFollow").disabled = false;
+});
+
+$("mMsg").addEventListener("click", () => {
+  const uid = modalUid;
+  const name = (usersMap[uid] || {}).name || "مستخدم";
+  closeModal();
+  setMode("dm", { uid, name });
+});
+$("mClose").addEventListener("click", closeModal);
+$("modal").addEventListener("click", (e) => { if (e.target === $("modal")) closeModal(); });
+$("title").addEventListener("click", () => { if (mode === "dm" && peer) openProfile(peer.uid); });
+
+/* ---------- الملف الشخصي (حسابي) ---------- */
 function drawPfAvatar() {
   const box = $("pfAv");
   box.textContent = "";
   box.appendChild(avatarEl(pfPhoto, $("pfName").value || myName(), "big"));
+}
+
+function drawLvl() {
+  const c = (usersMap[me.uid] || {}).msgCount || 0;
+  $("pfLvl").textContent = "المستوى " + lvlOf(c) + " - " + (c % LV) + " / " + LV + " رسالة للمستوى التالي";
 }
 
 function fillProfile() {
@@ -477,6 +730,7 @@ function fillProfile() {
   $("pfBio").value = u.bio || "";
   $("pfMsg").textContent = "";
   drawPfAvatar();
+  drawLvl();
 }
 
 function pfNote(text, ok) {
@@ -494,6 +748,7 @@ $("pfPhoto").addEventListener("change", async () => {
   $("pfPhoto").value = "";
 });
 $("pfDel").addEventListener("click", () => { pfPhoto = ""; drawPfAvatar(); });
+$("pfView").addEventListener("click", () => openProfile(me.uid));
 
 $("pfSave").addEventListener("click", async () => {
   const name = $("pfName").value.trim();
@@ -528,7 +783,7 @@ $("pfSave").addEventListener("click", async () => {
     batch.set(doc(db, "users", me.uid), { name, username: uname, bio, photo: pfPhoto }, { merge: true });
     await batch.commit();
     await updateProfile(me, { displayName: name });
-    $("me").textContent = name + (isAdmin ? " (مدير)" : "");
+    updateSub();
     pfNote("تم الحفظ.", true);
   } catch (e) {
     console.error(e);
@@ -544,9 +799,10 @@ function setMode(m, p) {
   if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
   lastMsgSnap = null;
   clearPending();
-  const chatLike = m === "public" || m === "dm";
+  const chatLike = m === "public" || m === "dm" || m === "saved";
   $("tabPub").classList.toggle("on", m === "public");
   $("tabPriv").classList.toggle("on", m === "people" || m === "dm");
+  $("tabSaved").classList.toggle("on", m === "saved");
   $("tabProf").classList.toggle("on", m === "profile");
   $("people").classList.toggle("hidden", m !== "people");
   $("profile").classList.toggle("hidden", m !== "profile");
@@ -555,35 +811,45 @@ function setMode(m, p) {
   $("back").classList.toggle("hidden", m !== "dm");
   $("adminBtn").classList.toggle("hidden", !(isAdmin && m === "public"));
   if (m !== "public") $("panel").classList.add("hidden");
-  $("title").textContent = m === "public" ? "الدردشة العامة"
-    : m === "dm" ? peer.name : m === "profile" ? "حسابي" : "الرسائل الخاصة";
+  $("title").textContent = ({ public: "الدردشة العامة", people: "الرسائل الخاصة",
+    saved: "الرسائل المحفوظة", profile: "حسابي" })[m] || peer.name;
   $("text").disabled = false;
   $("list").textContent = "";
-
   if (m === "profile") fillProfile();
+
+  let q = null, opts = null;
   if (m === "public") {
-    const q = query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(50));
-    unsubMsgs = onSnapshot(q, (snap) => renderMsgs(snap, isAdmin), (err) => { console.error(err); showDenied(); });
+    q = query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(50));
+    opts = { admin: isAdmin };
   } else if (m === "dm") {
-    const q = query(collection(db, "chats", chatIdWith(peer.uid), "messages"), orderBy("createdAt", "desc"), limit(50));
-    unsubMsgs = onSnapshot(q, (snap) => renderMsgs(snap, false), (err) => { console.error(err); showDenied(); });
+    q = query(collection(db, "chats", chatIdWith(peer.uid), "messages"), orderBy("createdAt", "desc"), limit(50));
+    opts = {};
+  } else if (m === "saved") {
+    q = query(collection(db, "users", me.uid, "saved"), orderBy("createdAt", "desc"), limit(50));
+    opts = { saved: true };
   }
+  if (q) unsubMsgs = onSnapshot(q, (snap) => renderMsgs(snap, opts), (err) => { console.error(err); showDenied(); });
+  updateSub();
 }
 
 $("tabPub").addEventListener("click", () => setMode("public"));
 $("tabPriv").addEventListener("click", () => setMode("people"));
+$("tabSaved").addEventListener("click", () => setMode("saved"));
 $("tabProf").addEventListener("click", () => setMode("profile"));
 $("back").addEventListener("click", () => setMode("people"));
 
 function stopAll() {
-  [unsubMsgs, unsubBan, unsubUsers, unsubInbox].forEach((u) => { if (u) u(); });
-  unsubMsgs = unsubBan = unsubUsers = unsubInbox = null;
+  [unsubMsgs, unsubBan, unsubUsers, unsubInbox, unsubPres].forEach((u) => { if (u) u(); });
+  unsubMsgs = unsubBan = unsubUsers = unsubInbox = unsubPres = null;
+  stopBeat();
   usersMap = {};
+  presenceMap = {};
   lastMsgSnap = lastInboxSnap = null;
 }
 
 onAuthStateChanged(auth, async (user) => {
   stopAll();
+  closeModal();
   me = user;
   isAdmin = false;
   clearPending();
@@ -591,7 +857,7 @@ onAuthStateChanged(auth, async (user) => {
   $("chat").classList.toggle("hidden", !user);
   $("panel").classList.add("hidden");
   if (!user) return;
-  $("me").textContent = user.displayName || user.email;
+  updateSub();
 
   try { isAdmin = (await getDoc(doc(db, "admins", user.uid))).exists(); } catch (e) {}
   if (auth.currentUser !== user) return;
@@ -606,15 +872,22 @@ onAuthStateChanged(auth, async (user) => {
   } catch (e) { console.error(e); }
   if (auth.currentUser !== user) return;
 
-  if (isAdmin) {
-    $("me").textContent = (user.displayName || user.email) + " (مدير)";
-    unsubBan = onSnapshot(collection(db, "banned"), renderBanned, console.error);
-  }
+  if (isAdmin) unsubBan = onSnapshot(collection(db, "banned"), renderBanned, console.error);
   unsubUsers = onSnapshot(collection(db, "users"), renderUsers, console.error);
   unsubInbox = onSnapshot(collection(db, "users", user.uid, "inbox"), renderInbox, console.error);
+  unsubPres = onSnapshot(collection(db, "presence"), (snap) => {
+    presenceMap = {};
+    snap.forEach((d) => {
+      const v = d.data({ serverTimestamps: "estimate" });
+      presenceMap[d.id] = { on: !!v.on, t: v.t && v.t.toMillis ? v.t.toMillis() : Date.now() };
+    });
+    refreshPresenceUI();
+  }, console.error);
+  startBeat();
   setMode("public");
 });
 
+/* ---------- الإرسال ---------- */
 $("send").addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = $("text").value.trim();
@@ -628,15 +901,19 @@ $("send").addEventListener("submit", async (e) => {
   $("text").value = "";
   clearPending();
   try {
+    const b = writeBatch(db);
     if (mode === "public") {
-      await addDoc(collection(db, "messages"), msg);
+      b.set(doc(collection(db, "messages")), msg);
+      b.update(doc(db, "users", me.uid), { msgCount: increment(1) });
     } else if (mode === "dm" && peer) {
-      await addDoc(collection(db, "chats", chatIdWith(peer.uid), "messages"), msg);
-      await setDoc(doc(db, "users", peer.uid, "inbox", me.uid),
-        { name: myName(), text: preview, at: serverTimestamp() });
-      await setDoc(doc(db, "users", me.uid, "inbox", peer.uid),
-        { name: peer.name, text: preview, at: serverTimestamp() });
-    }
+      b.set(doc(collection(db, "chats", chatIdWith(peer.uid), "messages")), msg);
+      b.set(doc(db, "users", peer.uid, "inbox", me.uid), { name: myName(), text: preview, at: serverTimestamp() });
+      b.set(doc(db, "users", me.uid, "inbox", peer.uid), { name: peer.name, text: preview, at: serverTimestamp() });
+      b.update(doc(db, "users", me.uid), { msgCount: increment(1) });
+    } else if (mode === "saved") {
+      b.set(doc(collection(db, "users", me.uid, "saved")), msg);
+    } else { return; }
+    await b.commit();
   } catch (err) {
     console.error(err);
     alert("تعذر الإرسال. تأكد من نشر القواعد الجديدة ومن حجم الملف.");
