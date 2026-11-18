@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Al-janabi Chat</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f766e">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -47,8 +50,12 @@ header small{display:block;color:var(--muted);overflow:hidden;text-overflow:elli
 .msg{max-width:80%;padding:8px 12px;border-radius:14px;background:var(--other);border:1px solid var(--line);align-self:flex-start;overflow-wrap:anywhere}
 .msg.mine{align-self:flex-end;background:var(--accent);color:var(--accent-text);border-color:transparent}
 .msg .who{font-size:12px;font-weight:700;opacity:.75;margin-bottom:2px}
+.msg img{display:block;max-width:100%;max-height:280px;border-radius:10px;margin-top:4px}
+.msg a{color:inherit;text-decoration:underline;display:block;margin-top:4px}
 .bar{display:flex;gap:6px;margin-top:6px}
 .mini{padding:4px 10px;font-size:12px;border:1px solid currentColor;background:transparent;color:inherit;opacity:.85;border-radius:8px}
+#chip{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 12px;background:var(--card);border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+#chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #send{display:flex;gap:8px;padding:10px 12px;background:var(--card);border-top:1px solid var(--line)}
 #send button{white-space:nowrap}
 </style>
@@ -94,8 +101,11 @@ header small{display:block;color:var(--muted);overflow:hidden;text-overflow:elli
     <div id="userList"></div>
   </div>
   <div id="list"></div>
+  <div id="chip" class="hidden"><span id="chipName"></span><button type="button" class="mini" id="chipX">إلغاء</button></div>
   <form id="send">
-    <input id="text" type="text" placeholder="اكتب رسالتك" maxlength="1000" autocomplete="off" required>
+    <button type="button" class="ghost" id="attach" aria-label="إرفاق صورة أو ملف">📎</button>
+    <input id="file" type="file" class="hidden">
+    <input id="text" type="text" placeholder="اكتب رسالتك" maxlength="1000" autocomplete="off">
     <button type="submit" class="primary">إرسال</button>
   </form>
 </section>
@@ -155,7 +165,7 @@ $("signupBtn").addEventListener("click", async () => {
 $("logout").addEventListener("click", () => signOut(auth));
 $("adminBtn").addEventListener("click", () => $("panel").classList.toggle("hidden"));
 
-let me = null, isAdmin = false, mode = "public", peer = null;
+let me = null, isAdmin = false, mode = "public", peer = null, pending = null;
 let unsubMsgs = null, unsubBan = null, unsubUsers = null, unsubInbox = null;
 
 const myName = () => (me && me.displayName) || "مستخدم";
@@ -175,6 +185,69 @@ function showDenied() {
   $("text").disabled = true;
 }
 
+/* ---------- المرفقات ---------- */
+function clearPending() {
+  pending = null;
+  $("file").value = "";
+  $("chip").classList.add("hidden");
+}
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let max = 900, q = 0.7, out = "";
+      for (let i = 0; i < 4; i++) {
+        const s = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * s);
+        c.height = Math.round(img.height * s);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        out = c.toDataURL("image/jpeg", q);
+        if (out.length < 500000) break;
+        max *= 0.75;
+        q -= 0.1;
+      }
+      URL.revokeObjectURL(url);
+      out.length < 750000 ? resolve(out) : reject(new Error("big"));
+    };
+    img.onerror = () => reject(new Error("bad"));
+    img.src = url;
+  });
+}
+
+function readAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error("read"));
+    r.readAsDataURL(file);
+  });
+}
+
+$("attach").addEventListener("click", () => $("file").click());
+$("chipX").addEventListener("click", clearPending);
+
+$("file").addEventListener("change", async () => {
+  const f = $("file").files[0];
+  if (!f) return;
+  try {
+    if (f.type.startsWith("image/")) {
+      pending = { image: await compressImage(f), name: f.name };
+    } else {
+      if (f.size > 500 * 1024) { alert("حجم الملف أكبر من 500 كيلوبايت."); clearPending(); return; }
+      pending = { data: await readAsDataUrl(f), name: f.name.slice(0, 100) };
+    }
+    $("chipName").textContent = (pending.image ? "📷 " : "📎 ") + f.name;
+    $("chip").classList.remove("hidden");
+  } catch (err) {
+    alert("تعذر تجهيز الملف. جرّب صورة أو ملف أصغر.");
+    clearPending();
+  }
+});
+
+/* ---------- عرض الرسائل ---------- */
 function renderMsgs(snap, tools) {
   const list = $("list");
   list.textContent = "";
@@ -186,9 +259,25 @@ function renderMsgs(snap, tools) {
     const who = document.createElement("div");
     who.className = "who";
     who.textContent = m.name || "مستخدم";
-    const body = document.createElement("div");
-    body.textContent = m.text;
-    box.append(who, body);
+    box.appendChild(who);
+    if (m.text) {
+      const body = document.createElement("div");
+      body.textContent = m.text;
+      box.appendChild(body);
+    }
+    if (m.image) {
+      const im = document.createElement("img");
+      im.src = m.image;
+      im.alt = "صورة";
+      box.appendChild(im);
+    }
+    if (m.fileData) {
+      const a = document.createElement("a");
+      a.href = m.fileData;
+      a.download = m.fileName || "file";
+      a.textContent = "📎 " + (m.fileName || "ملف");
+      box.appendChild(a);
+    }
 
     if (tools) {
       const bar = document.createElement("div");
@@ -280,6 +369,7 @@ function setMode(m, p) {
   mode = m;
   peer = p || null;
   if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
+  clearPending();
   $("tabPub").classList.toggle("on", m === "public");
   $("tabPriv").classList.toggle("on", m !== "public");
   $("people").classList.toggle("hidden", m !== "people");
@@ -293,10 +383,10 @@ function setMode(m, p) {
   $("list").textContent = "";
 
   if (m === "public") {
-    const q = query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(100));
+    const q = query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(50));
     unsubMsgs = onSnapshot(q, (snap) => renderMsgs(snap, isAdmin), (err) => { console.error(err); showDenied(); });
   } else if (m === "dm") {
-    const q = query(collection(db, "chats", chatIdWith(peer.uid), "messages"), orderBy("createdAt", "desc"), limit(100));
+    const q = query(collection(db, "chats", chatIdWith(peer.uid), "messages"), orderBy("createdAt", "desc"), limit(50));
     unsubMsgs = onSnapshot(q, (snap) => renderMsgs(snap, false), (err) => { console.error(err); showDenied(); });
   }
 }
@@ -314,6 +404,7 @@ onAuthStateChanged(auth, async (user) => {
   stopAll();
   me = user;
   isAdmin = false;
+  clearPending();
   $("auth").classList.toggle("hidden", !!user);
   $("chat").classList.toggle("hidden", !user);
   $("panel").classList.add("hidden");
@@ -345,21 +436,32 @@ onAuthStateChanged(auth, async (user) => {
 $("send").addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = $("text").value.trim();
-  if (!me || !text) return;
-  $("text").value = "";
+  if (!me || (!text && !pending)) return;
   const msg = { uid: me.uid, name: myName(), text, createdAt: serverTimestamp() };
+  let preview = text;
+  if (pending) {
+    if (pending.image) { msg.image = pending.image; preview = text || "📷 صورة"; }
+    else { msg.fileName = pending.name; msg.fileData = pending.data; preview = text || "📎 " + pending.name; }
+  }
+  $("text").value = "";
+  clearPending();
   try {
     if (mode === "public") {
       await addDoc(collection(db, "messages"), msg);
     } else if (mode === "dm" && peer) {
       await addDoc(collection(db, "chats", chatIdWith(peer.uid), "messages"), msg);
       await setDoc(doc(db, "users", peer.uid, "inbox", me.uid),
-        { name: myName(), text, at: serverTimestamp() });
+        { name: myName(), text: preview, at: serverTimestamp() });
       await setDoc(doc(db, "users", me.uid, "inbox", peer.uid),
-        { name: peer.name, text, at: serverTimestamp() });
+        { name: peer.name, text: preview, at: serverTimestamp() });
     }
-  } catch (err) { console.error(err); }
+  } catch (err) {
+    console.error(err);
+    alert("تعذر الإرسال. تأكد من نشر القواعد الجديدة ومن حجم الملف.");
+  }
 });
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
-    </html>
+</html>
