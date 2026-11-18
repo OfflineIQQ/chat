@@ -26,15 +26,24 @@ button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:
 .row{display:flex;gap:8px}.row button{flex:1}
 #err{color:#d14343;min-height:20px;font-size:14px}
 #chat{height:100%;display:flex;flex-direction:column;max-width:720px;margin:0 auto;background:var(--bg)}
-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line)}
-header b{font-size:18px}
-header small{display:block;color:var(--muted)}
-.hb{display:flex;gap:8px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+.ttl{min-width:0}
+header b{font-size:18px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+header small{display:block;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb{display:flex;gap:6px;flex-shrink:0}
+.hb button{padding:8px 10px;font-size:14px}
+#tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line)}
+.tab{flex:1;border-radius:0;background:transparent;color:var(--muted);padding:10px;border-bottom:3px solid transparent}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent)}
 #panel{background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;max-height:30%;overflow-y:auto}
-#panel h2{margin:0 0 8px;font-size:15px}
+#panel h2,#people h2{margin:0 0 8px;font-size:15px}
+#people{flex:1;overflow-y:auto;padding:12px 16px}
+#people h2{margin:14px 0 6px;color:var(--muted)}
+.item{display:block;width:100%;text-align:right;background:var(--card);color:var(--text);border:1px solid var(--line);margin-bottom:6px;padding:10px 12px;border-radius:12px}
+.item small{display:block;color:var(--muted);font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ban{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
 #list{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
-.empty{margin:auto;color:var(--muted)}
+.empty{margin:auto;color:var(--muted);text-align:center}
 .msg{max-width:80%;padding:8px 12px;border-radius:14px;background:var(--other);border:1px solid var(--line);align-self:flex-start;overflow-wrap:anywhere}
 .msg.mine{align-self:flex-end;background:var(--accent);color:var(--accent-text);border-color:transparent}
 .msg .who{font-size:12px;font-weight:700;opacity:.75;margin-bottom:2px}
@@ -63,15 +72,26 @@ header small{display:block;color:var(--muted)}
 
 <section id="chat" class="hidden">
   <header>
-    <div><b>الدردشة العامة</b><small id="me"></small></div>
+    <div class="ttl"><b id="title">الدردشة العامة</b><small id="me"></small></div>
     <div class="hb">
+      <button class="ghost hidden" id="back">رجوع</button>
       <button class="ghost hidden" id="adminBtn">لوحة التحكم</button>
       <button class="ghost" id="logout">خروج</button>
     </div>
   </header>
+  <div id="tabs">
+    <button class="tab on" id="tabPub">العامة</button>
+    <button class="tab" id="tabPriv">الخاصة</button>
+  </div>
   <div id="panel" class="hidden">
     <h2>المحظورون</h2>
     <div id="banList"></div>
+  </div>
+  <div id="people" class="hidden">
+    <h2>المحادثات</h2>
+    <div id="inboxList"></div>
+    <h2>المستخدمون</h2>
+    <div id="userList"></div>
   </div>
   <div id="list"></div>
   <form id="send">
@@ -128,22 +148,81 @@ $("signupBtn").addEventListener("click", async () => {
     const cred = await createUserWithEmailAndPassword(auth, $("email").value.trim(), $("pass").value);
     await updateProfile(cred.user, { displayName: name });
     $("me").textContent = name;
+    await setDoc(doc(db, "users", cred.user.uid), { name });
   } catch (err) { showError(err); }
 });
 
 $("logout").addEventListener("click", () => signOut(auth));
 $("adminBtn").addEventListener("click", () => $("panel").classList.toggle("hidden"));
 
+let me = null, isAdmin = false, mode = "public", peer = null;
+let unsubMsgs = null, unsubBan = null, unsubUsers = null, unsubInbox = null;
+
+const myName = () => (me && me.displayName) || "مستخدم";
+const chatIdWith = (uid) => [me.uid, uid].sort().join("_");
+
+function emptyNote(box, text) {
+  const d = document.createElement("div");
+  d.className = "empty";
+  d.textContent = text;
+  box.appendChild(d);
+}
+
+function showDenied() {
+  const list = $("list");
+  list.textContent = "";
+  emptyNote(list, "لا تملك صلاحية عرض الرسائل. قد يكون حسابك محظوراً.");
+  $("text").disabled = true;
+}
+
+function renderMsgs(snap, tools) {
+  const list = $("list");
+  list.textContent = "";
+  if (snap.empty) { emptyNote(list, "لا توجد رسائل بعد. اكتب أول رسالة."); return; }
+  snap.docs.slice().reverse().forEach((d) => {
+    const m = d.data({ serverTimestamps: "estimate" });
+    const box = document.createElement("div");
+    box.className = "msg" + (m.uid === me.uid ? " mine" : "");
+    const who = document.createElement("div");
+    who.className = "who";
+    who.textContent = m.name || "مستخدم";
+    const body = document.createElement("div");
+    body.textContent = m.text;
+    box.append(who, body);
+
+    if (tools) {
+      const bar = document.createElement("div");
+      bar.className = "bar";
+      const del = document.createElement("button");
+      del.className = "mini";
+      del.textContent = "حذف";
+      del.onclick = () => {
+        if (confirm("حذف هذه الرسالة؟")) deleteDoc(d.ref).catch(console.error);
+      };
+      bar.appendChild(del);
+      if (m.uid !== me.uid) {
+        const ban = document.createElement("button");
+        ban.className = "mini";
+        ban.textContent = "حظر";
+        ban.onclick = () => {
+          if (confirm("حظر " + (m.name || "هذا المستخدم") + "؟")) {
+            setDoc(doc(db, "banned", m.uid), { name: m.name || "", at: serverTimestamp() })
+              .catch(console.error);
+          }
+        };
+        bar.appendChild(ban);
+      }
+      box.appendChild(bar);
+    }
+    list.appendChild(box);
+  });
+  list.scrollTop = list.scrollHeight;
+}
+
 function renderBanned(snap) {
   const box = $("banList");
   box.textContent = "";
-  if (snap.empty) {
-    const p = document.createElement("div");
-    p.className = "empty";
-    p.textContent = "لا يوجد محظورون.";
-    box.appendChild(p);
-    return;
-  }
+  if (snap.empty) { emptyNote(box, "لا يوجد محظورون."); return; }
   snap.forEach((d) => {
     const row = document.createElement("div");
     row.className = "ban";
@@ -158,105 +237,129 @@ function renderBanned(snap) {
   });
 }
 
-let unsubMsgs = null, unsubBan = null, isAdmin = false;
+function item(title, sub, onClick) {
+  const b = document.createElement("button");
+  b.className = "item";
+  const t = document.createElement("div");
+  t.textContent = title;
+  b.appendChild(t);
+  if (sub) {
+    const s = document.createElement("small");
+    s.textContent = sub;
+    b.appendChild(s);
+  }
+  b.onclick = onClick;
+  return b;
+}
+
+function renderUsers(snap) {
+  const box = $("userList");
+  box.textContent = "";
+  const users = [];
+  snap.forEach((d) => { if (d.id !== me.uid) users.push({ uid: d.id, name: d.data().name || "مستخدم" }); });
+  if (!users.length) { emptyNote(box, "لا يوجد مستخدمون آخرون بعد. ادعُ أصدقاءك للتسجيل."); return; }
+  users.sort((a, b) => a.name.localeCompare(b.name));
+  users.forEach((u) => box.appendChild(item(u.name, "", () => setMode("dm", u))));
+}
+
+function renderInbox(snap) {
+  const box = $("inboxList");
+  box.textContent = "";
+  const rows = [];
+  snap.forEach((d) => {
+    const m = d.data({ serverTimestamps: "estimate" });
+    rows.push({ uid: d.id, name: m.name || "مستخدم", text: m.text || "",
+      t: m.at && m.at.toMillis ? m.at.toMillis() : 0 });
+  });
+  if (!rows.length) { emptyNote(box, "لا توجد محادثات بعد. اختر مستخدماً من القائمة."); return; }
+  rows.sort((a, b) => b.t - a.t);
+  rows.forEach((r) => box.appendChild(item(r.name, r.text, () => setMode("dm", { uid: r.uid, name: r.name }))));
+}
+
+function setMode(m, p) {
+  mode = m;
+  peer = p || null;
+  if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
+  $("tabPub").classList.toggle("on", m === "public");
+  $("tabPriv").classList.toggle("on", m !== "public");
+  $("people").classList.toggle("hidden", m !== "people");
+  $("list").classList.toggle("hidden", m === "people");
+  $("send").classList.toggle("hidden", m === "people");
+  $("back").classList.toggle("hidden", m !== "dm");
+  $("adminBtn").classList.toggle("hidden", !(isAdmin && m === "public"));
+  if (m !== "public") $("panel").classList.add("hidden");
+  $("title").textContent = m === "public" ? "الدردشة العامة" : (m === "dm" ? peer.name : "الرسائل الخاصة");
+  $("text").disabled = false;
+  $("list").textContent = "";
+
+  if (m === "public") {
+    const q = query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(100));
+    unsubMsgs = onSnapshot(q, (snap) => renderMsgs(snap, isAdmin), (err) => { console.error(err); showDenied(); });
+  } else if (m === "dm") {
+    const q = query(collection(db, "chats", chatIdWith(peer.uid), "messages"), orderBy("createdAt", "desc"), limit(100));
+    unsubMsgs = onSnapshot(q, (snap) => renderMsgs(snap, false), (err) => { console.error(err); showDenied(); });
+  }
+}
+
+$("tabPub").addEventListener("click", () => setMode("public"));
+$("tabPriv").addEventListener("click", () => setMode("people"));
+$("back").addEventListener("click", () => setMode("people"));
+
+function stopAll() {
+  [unsubMsgs, unsubBan, unsubUsers, unsubInbox].forEach((u) => { if (u) u(); });
+  unsubMsgs = unsubBan = unsubUsers = unsubInbox = null;
+}
 
 onAuthStateChanged(auth, async (user) => {
-  if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
-  if (unsubBan) { unsubBan(); unsubBan = null; }
+  stopAll();
+  me = user;
   isAdmin = false;
   $("auth").classList.toggle("hidden", !!user);
   $("chat").classList.toggle("hidden", !user);
   $("panel").classList.add("hidden");
-  $("adminBtn").classList.add("hidden");
-  $("text").disabled = false;
   if (!user) return;
   $("me").textContent = user.displayName || user.email;
 
   try { isAdmin = (await getDoc(doc(db, "admins", user.uid))).exists(); } catch (e) {}
   if (auth.currentUser !== user) return;
 
+  try {
+    const ref = doc(db, "users", user.uid);
+    if (user.displayName) {
+      await setDoc(ref, { name: user.displayName });
+    } else if (!(await getDoc(ref)).exists()) {
+      await setDoc(ref, { name: (user.email || "").split("@")[0] || "مستخدم" });
+    }
+  } catch (e) { console.error(e); }
+  if (auth.currentUser !== user) return;
+
   if (isAdmin) {
-    $("adminBtn").classList.remove("hidden");
     $("me").textContent = (user.displayName || user.email) + " (مدير)";
     unsubBan = onSnapshot(collection(db, "banned"), renderBanned, console.error);
   }
-
-  const q = query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(100));
-  unsubMsgs = onSnapshot(q, (snap) => {
-    const list = $("list");
-    list.textContent = "";
-    if (snap.empty) {
-      const d = document.createElement("div");
-      d.className = "empty";
-      d.textContent = "لا توجد رسائل بعد. اكتب أول رسالة.";
-      list.appendChild(d);
-      return;
-    }
-    snap.docs.slice().reverse().forEach((d) => {
-      const m = d.data({ serverTimestamps: "estimate" });
-      const box = document.createElement("div");
-      box.className = "msg" + (m.uid === user.uid ? " mine" : "");
-      const who = document.createElement("div");
-      who.className = "who";
-      who.textContent = m.name || "مستخدم";
-      const body = document.createElement("div");
-      body.textContent = m.text;
-      box.append(who, body);
-
-      if (isAdmin) {
-        const bar = document.createElement("div");
-        bar.className = "bar";
-        const del = document.createElement("button");
-        del.className = "mini";
-        del.textContent = "حذف";
-        del.onclick = () => {
-          if (confirm("حذف هذه الرسالة؟")) deleteDoc(d.ref).catch(console.error);
-        };
-        bar.appendChild(del);
-        if (m.uid !== user.uid) {
-          const ban = document.createElement("button");
-          ban.className = "mini";
-          ban.textContent = "حظر";
-          ban.onclick = () => {
-            if (confirm("حظر " + (m.name || "هذا المستخدم") + "؟")) {
-              setDoc(doc(db, "banned", m.uid), { name: m.name || "", at: serverTimestamp() })
-                .catch(console.error);
-            }
-          };
-          bar.appendChild(ban);
-        }
-        box.appendChild(bar);
-      }
-      list.appendChild(box);
-    });
-    list.scrollTop = list.scrollHeight;
-  }, (err) => {
-    console.error(err);
-    const list = $("list");
-    list.textContent = "";
-    const d = document.createElement("div");
-    d.className = "empty";
-    d.textContent = "لا تملك صلاحية عرض الرسائل. قد يكون حسابك محظوراً.";
-    list.appendChild(d);
-    $("text").disabled = true;
-  });
+  unsubUsers = onSnapshot(collection(db, "users"), renderUsers, console.error);
+  unsubInbox = onSnapshot(collection(db, "users", user.uid, "inbox"), renderInbox, console.error);
+  setMode("public");
 });
 
 $("send").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const user = auth.currentUser;
   const text = $("text").value.trim();
-  if (!user || !text) return;
+  if (!me || !text) return;
   $("text").value = "";
+  const msg = { uid: me.uid, name: myName(), text, createdAt: serverTimestamp() };
   try {
-    await addDoc(collection(db, "messages"), {
-      uid: user.uid,
-      name: user.displayName || "مستخدم",
-      text,
-      createdAt: serverTimestamp()
-    });
+    if (mode === "public") {
+      await addDoc(collection(db, "messages"), msg);
+    } else if (mode === "dm" && peer) {
+      await addDoc(collection(db, "chats", chatIdWith(peer.uid), "messages"), msg);
+      await setDoc(doc(db, "users", peer.uid, "inbox", me.uid),
+        { name: myName(), text, at: serverTimestamp() });
+      await setDoc(doc(db, "users", me.uid, "inbox", peer.uid),
+        { name: peer.name, text, at: serverTimestamp() });
+    }
   } catch (err) { console.error(err); }
 });
 </script>
 </body>
-</html>
+    </html>
