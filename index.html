@@ -7,47 +7,39 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#e9efee; --card:#ffffff; --text:#14201e; --muted:#5f7370;
-  --accent:#0f766e; --accent-text:#ffffff; --other:#ffffff; --line:#d3dedc;
-  color-scheme: light dark;
-}
-@media (prefers-color-scheme: dark){
-  :root{ --bg:#0d1514; --card:#162220; --text:#e8f1ef; --muted:#8aa39f;
-    --accent:#14a398; --accent-text:#04201d; --other:#1d2d2a; --line:#27403c; }
-}
+:root{--bg:#e9efee;--card:#fff;--text:#14201e;--muted:#5f7370;--accent:#0f766e;--accent-text:#fff;--other:#fff;--line:#d3dedc;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1514;--card:#162220;--text:#e8f1ef;--muted:#8aa39f;--accent:#14a398;--accent-text:#04201d;--other:#1d2d2a;--line:#27403c}}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
-body{font-family:"Tajawal",system-ui,sans-serif;background:var(--bg);color:var(--text);
-  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{font-family:"Tajawal",system-ui,sans-serif;background:var(--bg);color:var(--text);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 .hidden{display:none!important}
 button,input{font:inherit}
-input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;
-  background:var(--card);color:var(--text);font-size:16px}
+input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);font-size:16px}
 input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:700}
 .primary{background:var(--accent);color:var(--accent-text)}
 .ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
-
 #auth{min-height:100%;display:flex;align-items:center;justify-content:center;padding:20px}
-.box{width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);
-  border-radius:16px;padding:24px;display:grid;gap:12px}
+.box{width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;display:grid;gap:12px}
 .box h1{margin:0 0 4px;font-size:26px}
 .box p{margin:0 0 8px;color:var(--muted)}
 .row{display:flex;gap:8px}.row button{flex:1}
 #err{color:#d14343;min-height:20px;font-size:14px}
-
 #chat{height:100%;display:flex;flex-direction:column;max-width:720px;margin:0 auto;background:var(--bg)}
-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;
-  background:var(--card);border-bottom:1px solid var(--line)}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line)}
 header b{font-size:18px}
 header small{display:block;color:var(--muted)}
+.hb{display:flex;gap:8px}
+#panel{background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;max-height:30%;overflow-y:auto}
+#panel h2{margin:0 0 8px;font-size:15px}
+.ban{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
 #list{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
 .empty{margin:auto;color:var(--muted)}
-.msg{max-width:80%;padding:8px 12px;border-radius:14px;background:var(--other);
-  border:1px solid var(--line);align-self:flex-start;word-wrap:break-word;overflow-wrap:anywhere}
+.msg{max-width:80%;padding:8px 12px;border-radius:14px;background:var(--other);border:1px solid var(--line);align-self:flex-start;overflow-wrap:anywhere}
 .msg.mine{align-self:flex-end;background:var(--accent);color:var(--accent-text);border-color:transparent}
 .msg .who{font-size:12px;font-weight:700;opacity:.75;margin-bottom:2px}
+.bar{display:flex;gap:6px;margin-top:6px}
+.mini{padding:4px 10px;font-size:12px;border:1px solid currentColor;background:transparent;color:inherit;opacity:.85;border-radius:8px}
 #send{display:flex;gap:8px;padding:10px 12px;background:var(--card);border-top:1px solid var(--line)}
 #send button{white-space:nowrap}
 </style>
@@ -63,7 +55,7 @@ header small{display:block;color:var(--muted)}
     <input id="pass" type="password" placeholder="كلمة المرور (6 أحرف على الأقل)" autocomplete="current-password" required>
     <div id="err"></div>
     <div class="row">
-      <button type="submit" class="primary" id="loginBtn">دخول</button>
+      <button type="submit" class="primary">دخول</button>
       <button type="button" class="ghost" id="signupBtn">حساب جديد</button>
     </div>
   </form>
@@ -72,9 +64,16 @@ header small{display:block;color:var(--muted)}
 <section id="chat" class="hidden">
   <header>
     <div><b>الدردشة العامة</b><small id="me"></small></div>
-    <button class="ghost" id="logout">خروج</button>
+    <div class="hb">
+      <button class="ghost hidden" id="adminBtn">لوحة التحكم</button>
+      <button class="ghost" id="logout">خروج</button>
+    </div>
   </header>
-  <div id="list"><div class="empty">لا توجد رسائل بعد. اكتب أول رسالة.</div></div>
+  <div id="panel" class="hidden">
+    <h2>المحظورون</h2>
+    <div id="banList"></div>
+  </div>
+  <div id="list"></div>
   <form id="send">
     <input id="text" type="text" placeholder="اكتب رسالتك" maxlength="1000" autocomplete="off" required>
     <button type="submit" class="primary">إرسال</button>
@@ -86,8 +85,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
   signInWithEmailAndPassword, signOut, updateProfile }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, orderBy, limit,
-  onSnapshot, serverTimestamp }
+import { getFirestore, collection, doc, getDoc, setDoc, deleteDoc, addDoc,
+  query, orderBy, limit, onSnapshot, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -133,17 +132,57 @@ $("signupBtn").addEventListener("click", async () => {
 });
 
 $("logout").addEventListener("click", () => signOut(auth));
+$("adminBtn").addEventListener("click", () => $("panel").classList.toggle("hidden"));
 
-let unsubscribe = null;
-onAuthStateChanged(auth, (user) => {
-  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+function renderBanned(snap) {
+  const box = $("banList");
+  box.textContent = "";
+  if (snap.empty) {
+    const p = document.createElement("div");
+    p.className = "empty";
+    p.textContent = "لا يوجد محظورون.";
+    box.appendChild(p);
+    return;
+  }
+  snap.forEach((d) => {
+    const row = document.createElement("div");
+    row.className = "ban";
+    const n = document.createElement("span");
+    n.textContent = d.data().name || d.id;
+    const b = document.createElement("button");
+    b.className = "mini";
+    b.textContent = "إلغاء الحظر";
+    b.onclick = () => deleteDoc(d.ref).catch(console.error);
+    row.append(n, b);
+    box.appendChild(row);
+  });
+}
+
+let unsubMsgs = null, unsubBan = null, isAdmin = false;
+
+onAuthStateChanged(auth, async (user) => {
+  if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
+  if (unsubBan) { unsubBan(); unsubBan = null; }
+  isAdmin = false;
   $("auth").classList.toggle("hidden", !!user);
   $("chat").classList.toggle("hidden", !user);
+  $("panel").classList.add("hidden");
+  $("adminBtn").classList.add("hidden");
+  $("text").disabled = false;
   if (!user) return;
   $("me").textContent = user.displayName || user.email;
 
+  try { isAdmin = (await getDoc(doc(db, "admins", user.uid))).exists(); } catch (e) {}
+  if (auth.currentUser !== user) return;
+
+  if (isAdmin) {
+    $("adminBtn").classList.remove("hidden");
+    $("me").textContent = (user.displayName || user.email) + " (مدير)";
+    unsubBan = onSnapshot(collection(db, "banned"), renderBanned, console.error);
+  }
+
   const q = query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(100));
-  unsubscribe = onSnapshot(q, (snap) => {
+  unsubMsgs = onSnapshot(q, (snap) => {
     const list = $("list");
     list.textContent = "";
     if (snap.empty) {
@@ -153,8 +192,8 @@ onAuthStateChanged(auth, (user) => {
       list.appendChild(d);
       return;
     }
-    snap.docs.slice().reverse().forEach((doc) => {
-      const m = doc.data({ serverTimestamps: "estimate" });
+    snap.docs.slice().reverse().forEach((d) => {
+      const m = d.data({ serverTimestamps: "estimate" });
       const box = document.createElement("div");
       box.className = "msg" + (m.uid === user.uid ? " mine" : "");
       const who = document.createElement("div");
@@ -163,10 +202,44 @@ onAuthStateChanged(auth, (user) => {
       const body = document.createElement("div");
       body.textContent = m.text;
       box.append(who, body);
+
+      if (isAdmin) {
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        const del = document.createElement("button");
+        del.className = "mini";
+        del.textContent = "حذف";
+        del.onclick = () => {
+          if (confirm("حذف هذه الرسالة؟")) deleteDoc(d.ref).catch(console.error);
+        };
+        bar.appendChild(del);
+        if (m.uid !== user.uid) {
+          const ban = document.createElement("button");
+          ban.className = "mini";
+          ban.textContent = "حظر";
+          ban.onclick = () => {
+            if (confirm("حظر " + (m.name || "هذا المستخدم") + "؟")) {
+              setDoc(doc(db, "banned", m.uid), { name: m.name || "", at: serverTimestamp() })
+                .catch(console.error);
+            }
+          };
+          bar.appendChild(ban);
+        }
+        box.appendChild(bar);
+      }
       list.appendChild(box);
     });
     list.scrollTop = list.scrollHeight;
-  }, (err) => console.error(err));
+  }, (err) => {
+    console.error(err);
+    const list = $("list");
+    list.textContent = "";
+    const d = document.createElement("div");
+    d.className = "empty";
+    d.textContent = "لا تملك صلاحية عرض الرسائل. قد يكون حسابك محظوراً.";
+    list.appendChild(d);
+    $("text").disabled = true;
+  });
 });
 
 $("send").addEventListener("submit", async (e) => {
