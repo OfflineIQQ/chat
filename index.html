@@ -16,10 +16,10 @@
 html,body{height:100%;margin:0}
 body{font-family:"Tajawal",system-ui,sans-serif;background:var(--bg);color:var(--text);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 .hidden{display:none!important}
-button,input,textarea{font:inherit}
-input,textarea{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);font-size:16px}
+button,input,textarea,select{font:inherit}
+input,textarea,select{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);font-size:16px}
 textarea{resize:none}
-input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:700}
 button:disabled{opacity:.6}
 .primary{background:var(--accent);color:var(--accent-text)}
@@ -42,13 +42,15 @@ header small.on,#mStatus.on{color:#16a34a}
 .tab{flex:1;border-radius:0;background:transparent;color:var(--muted);padding:10px 4px;font-size:14px;border-bottom:3px solid transparent}
 .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
 #panel{background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;max-height:30%;overflow-y:auto}
-#panel h2,#people h2{margin:0 0 8px;font-size:15px}
-#people{flex:1;overflow-y:auto;padding:12px 16px}
-#people h2{margin:14px 0 6px;color:var(--muted)}
+#panel h2,#people h2,#groups h2{margin:0 0 8px;font-size:15px}
+#people,#groups{flex:1;overflow-y:auto;padding:12px 16px}
+#people h2,#groups h2{margin:14px 0 6px;color:var(--muted)}
 #q{margin-bottom:4px}
+#gnew{display:grid;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:8px}
 .item{display:flex;align-items:center;gap:10px;width:100%;text-align:right;background:var(--card);color:var(--text);border:1px solid var(--line);margin-bottom:6px;padding:10px 12px;border-radius:12px}
 .it{min-width:0;flex:1}
 .item small{display:block;color:var(--muted);font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font-size:12px;font-weight:700;background:var(--accent);color:var(--accent-text);border-radius:8px;padding:2px 8px}
 .avw{position:relative;flex-shrink:0;display:flex}
 .av{width:38px;height:38px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden}
 .av img{width:100%;height:100%;object-fit:cover}
@@ -60,7 +62,7 @@ header small.on,#mStatus.on{color:#16a34a}
 #profile label{font-size:14px;color:var(--muted);margin-top:6px}
 .pfhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 #pfLvl{color:var(--muted);font-size:14px}
-#pfMsg{min-height:20px;font-size:14px}
+#pfMsg,#gMsg,#giMsg{min-height:20px;font-size:14px}
 .ok{color:#15803d}.bad{color:#d14343}
 #list{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
 .empty{margin:auto;color:var(--muted);text-align:center}
@@ -82,12 +84,13 @@ header small.on,#mStatus.on{color:#16a34a}
 #chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #send{display:flex;gap:8px;padding:10px 12px;background:var(--card);border-top:1px solid var(--line)}
 #send button{white-space:nowrap}
-#modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+#modal,#ginfo{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:20}
 .sheet{width:100%;max-width:720px;background:var(--card);border-radius:18px 18px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;justify-items:center;text-align:center;max-height:92%;overflow-y:auto}
-.sheet .row,.sheet .lv{width:100%}
+.sheet .row,.sheet .lv,.mlist{width:100%}
 .sheet>.ghost{width:100%}
-#mName{font-size:20px}
-#mUser,#mStatus,#mCnt{color:var(--muted);font-size:14px}
+.mlist{display:grid;text-align:right}
+#mName,#giName{font-size:20px}
+#mUser,#mStatus,#mCnt,#giDesc,#giType{color:var(--muted);font-size:14px}
 #mBio{overflow-wrap:anywhere}
 .bar2{height:8px;background:var(--line);border-radius:8px;overflow:hidden;margin:4px 0}
 .bar2 i{display:block;height:100%;background:var(--accent)}
@@ -115,15 +118,16 @@ header small.on,#mStatus.on{color:#16a34a}
 
 <section id="chat" class="hidden">
   <header>
-    <div class="ttl"><b id="title">الدردشة العامة</b><small id="me"></small></div>
+    <div class="ttl"><b id="title">المجموعات</b><small id="me"></small></div>
     <div class="hb">
       <button class="ghost hidden" id="back">رجوع</button>
+      <button class="ghost hidden" id="gInfoBtn">معلومات</button>
       <button class="ghost hidden" id="adminBtn">لوحة التحكم</button>
       <button class="ghost" id="logout">خروج</button>
     </div>
   </header>
   <div id="tabs">
-    <button class="tab on" id="tabPub">العامة</button>
+    <button class="tab on" id="tabPub">المجموعات</button>
     <button class="tab" id="tabPriv">الخاصة</button>
     <button class="tab" id="tabSaved">المحفوظة</button>
     <button class="tab" id="tabProf">حسابي</button>
@@ -131,6 +135,26 @@ header small.on,#mStatus.on{color:#16a34a}
   <div id="panel" class="hidden">
     <h2>المحظورون</h2>
     <div id="banList"></div>
+  </div>
+  <div id="groups" class="hidden">
+    <button type="button" class="primary" id="gNewBtn" style="width:100%">+ مجموعة جديدة</button>
+    <div id="gnew" class="hidden">
+      <input id="gName" type="text" placeholder="اسم المجموعة" maxlength="40" autocomplete="off">
+      <input id="gDesc" type="text" placeholder="وصف قصير (اختياري)" maxlength="150" autocomplete="off">
+      <select id="gType">
+        <option value="public">عامة: أي شخص يكدر ينضم</option>
+        <option value="private">خاصة: أنت فقط تضيف الأعضاء</option>
+      </select>
+      <div id="gMsg"></div>
+      <div class="row">
+        <button type="button" class="primary" id="gCreate">إنشاء</button>
+        <button type="button" class="ghost" id="gCancel">إلغاء</button>
+      </div>
+    </div>
+    <h2>مجموعاتي</h2>
+    <div id="myGroups"></div>
+    <h2>اكتشف مجموعات</h2>
+    <div id="pubGroups"></div>
   </div>
   <div id="people" class="hidden">
     <input id="q" type="search" placeholder="ابحث بالاسم أو اسم المستخدم" autocomplete="off">
@@ -167,6 +191,23 @@ header small.on,#mStatus.on{color:#16a34a}
   </form>
 </section>
 
+<div id="ginfo" class="hidden">
+  <div class="sheet">
+    <b id="giName"></b>
+    <div id="giDesc"></div>
+    <div id="giType"></div>
+    <div id="giAdd" class="row hidden">
+      <input id="giUser" type="text" dir="ltr" placeholder="@username لإضافة عضو" autocapitalize="none" autocomplete="off" spellcheck="false">
+      <button type="button" class="primary" id="giAddBtn" style="flex:0 0 auto">إضافة</button>
+    </div>
+    <div id="giMsg"></div>
+    <div id="giMembers" class="mlist"></div>
+    <button type="button" class="ghost" id="giLeave">مغادرة المجموعة</button>
+    <button type="button" class="ghost" id="giDelete">حذف المجموعة</button>
+    <button type="button" class="ghost" id="giClose">إغلاق</button>
+  </div>
+</div>
+
 <div id="modal" class="hidden">
   <div class="sheet">
     <div id="mAv"></div>
@@ -196,8 +237,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
   signInWithEmailAndPassword, signOut, updateProfile }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, setDoc, deleteDoc, writeBatch, increment,
-  query, where, orderBy, limit, onSnapshot, serverTimestamp, getCountFromServer }
+import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch,
+  increment, arrayUnion, arrayRemove, query, where, orderBy, limit, onSnapshot,
+  serverTimestamp, getCountFromServer }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -225,14 +267,17 @@ const errors = {
 };
 const showError = (e) => { $("err").textContent = errors[e.code] || "حدث خطأ. حاول مرة ثانية."; };
 
-let me = null, isAdmin = false, mode = "public", peer = null, pending = null;
-let unsubMsgs = null, unsubBan = null, unsubUsers = null, unsubInbox = null, unsubPres = null, beatTimer = null;
-let usersMap = {}, presenceMap = {}, lastMsgSnap = null, lastOpts = null, lastInboxSnap = null, pfPhoto = "";
+let me = null, isAdmin = false, mode = "groups", peer = null, grp = null, pending = null;
+let unsubMsgs = null, unsubBan = null, unsubUsers = null, unsubInbox = null, unsubPres = null;
+let unsubMyG = null, unsubPubG = null, unsubGrp = null, beatTimer = null;
+let usersMap = {}, presenceMap = {}, myGroups = [], pubGroups = [];
+let lastMsgSnap = null, lastOpts = null, lastInboxSnap = null, pfPhoto = "";
 let modalUid = null, modalTok = 0, followState = false;
 
 const myName = () => (me && me.displayName) || "مستخدم";
 const chatIdWith = (uid) => [me.uid, uid].sort().join("_");
 const lvlOf = (c) => Math.floor((c || 0) / LV) + 1;
+const gdoc = (d) => Object.assign({ id: d.id, members: [] }, d.data());
 
 /* ---------- الحالة (متصل / آخر ظهور) ---------- */
 function isOnline(uid) {
@@ -270,12 +315,14 @@ window.addEventListener("pagehide", () => { if (me) beat(false); });
 function updateSub() {
   if (!me) return;
   const s = $("me");
+  s.className = "";
   if (mode === "dm" && peer) {
     s.textContent = seenText(peer.uid);
-    s.className = isOnline(peer.uid) ? "on" : "";
+    if (isOnline(peer.uid)) s.className = "on";
+  } else if (mode === "group" && grp) {
+    s.textContent = grp.members.length + " عضو" + (grp.type === "private" ? " - مجموعة خاصة" : "");
   } else {
     s.textContent = (me.displayName || me.email) + (isAdmin ? " (مدير)" : "");
-    s.className = "";
   }
 }
 
@@ -429,11 +476,26 @@ $("file").addEventListener("change", async () => {
 });
 
 /* ---------- عرض الرسائل ---------- */
+function curOpts() {
+  if (mode === "public") return { del: isAdmin, ban: isAdmin };
+  if (mode === "saved") return { saved: true };
+  if (mode === "group" && grp) return { del: grp.owner === me.uid || isAdmin, own: true, ban: isAdmin };
+  return {};
+}
+
 async function saveCopy(m, u) {
   const n = { uid: me.uid, name: myName(), text: m.text || "", from: u.name || m.name || "", createdAt: serverTimestamp() };
   if (m.image) n.image = m.image;
   if (m.fileData) { n.fileName = m.fileName || "file"; n.fileData = m.fileData; }
   await setDoc(doc(collection(db, "users", me.uid, "saved")), n);
+}
+
+function miniBtn(label, fn) {
+  const b = document.createElement("button");
+  b.className = "mini";
+  b.textContent = label;
+  b.onclick = fn;
+  return b;
 }
 
 function renderMsgs(snap, opts) {
@@ -492,38 +554,22 @@ function renderMsgs(snap, opts) {
     const bar = document.createElement("div");
     bar.className = "bar";
     if (opts.saved) {
-      const del = document.createElement("button");
-      del.className = "mini";
-      del.textContent = "حذف";
-      del.onclick = () => { if (confirm("حذف من المحفوظات؟")) deleteDoc(d.ref).catch(console.error); };
-      bar.appendChild(del);
+      bar.appendChild(miniBtn("حذف", () => { if (confirm("حذف من المحفوظات؟")) deleteDoc(d.ref).catch(console.error); }));
     } else {
-      const sv = document.createElement("button");
-      sv.className = "mini";
-      sv.textContent = "حفظ";
-      sv.onclick = async () => {
+      const sv = miniBtn("حفظ", async () => {
         try { await saveCopy(m, u); sv.textContent = "تم ✓"; }
         catch (e) { console.error(e); alert("تعذر الحفظ."); }
-      };
+      });
       bar.appendChild(sv);
-      if (opts.admin) {
-        const del = document.createElement("button");
-        del.className = "mini";
-        del.textContent = "حذف";
-        del.onclick = () => { if (confirm("حذف هذه الرسالة؟")) deleteDoc(d.ref).catch(console.error); };
-        bar.appendChild(del);
-        if (m.uid !== me.uid) {
-          const ban = document.createElement("button");
-          ban.className = "mini";
-          ban.textContent = "حظر";
-          ban.onclick = () => {
-            if (confirm("حظر " + (u.name || m.name || "هذا المستخدم") + "؟")) {
-              setDoc(doc(db, "banned", m.uid), { name: u.name || m.name || "", at: serverTimestamp() })
-                .catch(console.error);
-            }
-          };
-          bar.appendChild(ban);
-        }
+      if (opts.del || (opts.own && m.uid === me.uid)) {
+        bar.appendChild(miniBtn("حذف", () => { if (confirm("حذف هذه الرسالة؟")) deleteDoc(d.ref).catch(console.error); }));
+      }
+      if (opts.ban && m.uid !== me.uid) {
+        bar.appendChild(miniBtn("حظر", () => {
+          if (confirm("حظر " + (u.name || m.name || "هذا المستخدم") + "؟")) {
+            setDoc(doc(db, "banned", m.uid), { name: u.name || m.name || "", at: serverTimestamp() }).catch(console.error);
+          }
+        }));
       }
     }
     box.appendChild(bar);
@@ -542,11 +588,7 @@ function renderBanned(snap) {
     row.className = "ban";
     const n = document.createElement("span");
     n.textContent = d.data().name || d.id;
-    const b = document.createElement("button");
-    b.className = "mini";
-    b.textContent = "إلغاء الحظر";
-    b.onclick = () => deleteDoc(d.ref).catch(console.error);
-    row.append(n, b);
+    row.append(n, miniBtn("إلغاء الحظر", () => deleteDoc(d.ref).catch(console.error)));
     box.appendChild(row);
   });
 }
@@ -590,8 +632,9 @@ function renderUsers(snap) {
   snap.forEach((d) => { usersMap[d.id] = d.data(); });
   renderUserList();
   if (lastInboxSnap) renderInbox(lastInboxSnap);
-  if (lastMsgSnap && lastOpts && (mode === "public" || mode === "dm")) renderMsgs(lastMsgSnap, lastOpts);
+  if (lastMsgSnap && (mode === "public" || mode === "dm" || mode === "group")) renderMsgs(lastMsgSnap, curOpts());
   if (mode === "profile") drawLvl();
+  if (grp && !$("ginfo").classList.contains("hidden")) drawGInfo();
 }
 
 function renderInbox(snap) {
@@ -611,6 +654,176 @@ function renderInbox(snap) {
 }
 
 $("q").addEventListener("input", renderUserList);
+
+/* ---------- المجموعات ---------- */
+function gItem(icon, title, sub, onClick, tag) {
+  const b = document.createElement("button");
+  b.className = "item";
+  const av = document.createElement("div");
+  av.className = "av";
+  av.textContent = icon;
+  const t = document.createElement("div");
+  t.className = "it";
+  const n = document.createElement("div");
+  n.textContent = title;
+  t.appendChild(n);
+  if (sub) {
+    const s = document.createElement("small");
+    s.textContent = sub;
+    t.appendChild(s);
+  }
+  b.append(av, t);
+  if (tag) {
+    const x = document.createElement("span");
+    x.className = "tag";
+    x.textContent = tag;
+    b.appendChild(x);
+  }
+  b.onclick = onClick;
+  return b;
+}
+
+function renderGroups() {
+  if (!me) return;
+  const my = $("myGroups");
+  my.textContent = "";
+  my.appendChild(gItem("🌐", "الدردشة العامة", "مفتوحة لجميع المستخدمين", () => setMode("public")));
+  myGroups.slice().sort((a, b) => (a.name || "").localeCompare(b.name || "")).forEach((g) => {
+    my.appendChild(gItem(g.type === "private" ? "🔒" : "👥", g.name,
+      g.members.length + " عضو" + (g.desc ? " - " + g.desc : ""), () => setMode("group", g)));
+  });
+  const pub = $("pubGroups");
+  pub.textContent = "";
+  const list = pubGroups.filter((g) => !g.members.includes(me.uid));
+  if (!list.length) { emptyNote(pub, "لا توجد مجموعات عامة للانضمام الآن."); return; }
+  list.forEach((g) => {
+    pub.appendChild(gItem("👥", g.name, g.members.length + " عضو" + (g.desc ? " - " + g.desc : ""), () => joinGroup(g), "انضمام"));
+  });
+}
+
+async function joinGroup(g) {
+  try {
+    await updateDoc(doc(db, "groups", g.id), { members: arrayUnion(me.uid) });
+    setMode("group", Object.assign({}, g, { members: g.members.concat(me.uid) }));
+  } catch (e) {
+    console.error(e);
+    alert("تعذر الانضمام للمجموعة.");
+  }
+}
+
+function gNote(text, ok) {
+  const m = $("gMsg");
+  m.textContent = text;
+  m.className = ok ? "ok" : "bad";
+}
+
+$("gNewBtn").addEventListener("click", () => { $("gnew").classList.toggle("hidden"); gNote("", true); });
+$("gCancel").addEventListener("click", () => $("gnew").classList.add("hidden"));
+
+$("gCreate").addEventListener("click", async () => {
+  const name = $("gName").value.trim();
+  const desc = $("gDesc").value.trim();
+  const type = $("gType").value;
+  if (!name) { gNote("اكتب اسم المجموعة.", false); return; }
+  $("gCreate").disabled = true;
+  try {
+    const ref = doc(collection(db, "groups"));
+    await setDoc(ref, { name, desc, type, owner: me.uid, members: [me.uid], createdAt: serverTimestamp() });
+    $("gName").value = "";
+    $("gDesc").value = "";
+    $("gnew").classList.add("hidden");
+    setMode("group", { id: ref.id, name, desc, type, owner: me.uid, members: [me.uid] });
+  } catch (e) {
+    console.error(e);
+    gNote("تعذر إنشاء المجموعة. تأكد من نشر القواعد الجديدة.", false);
+  }
+  $("gCreate").disabled = false;
+});
+
+/* معلومات المجموعة */
+function giNote(text, ok) {
+  const m = $("giMsg");
+  m.textContent = text;
+  m.className = ok ? "ok" : "bad";
+}
+
+function closeGInfo() { $("ginfo").classList.add("hidden"); }
+
+function drawGInfo() {
+  if (!grp) return;
+  const own = grp.owner === me.uid;
+  $("giName").textContent = grp.name;
+  $("giDesc").textContent = grp.desc || "";
+  $("giType").textContent = (grp.type === "private" ? "مجموعة خاصة: المنشئ فقط يضيف الأعضاء" : "مجموعة عامة: أي شخص يكدر ينضم")
+    + " - " + grp.members.length + " عضو";
+  $("giAdd").classList.toggle("hidden", !own);
+  $("giLeave").classList.toggle("hidden", own);
+  $("giDelete").classList.toggle("hidden", !own);
+  const box = $("giMembers");
+  box.textContent = "";
+  grp.members.forEach((uid) => {
+    const u = usersMap[uid] || {};
+    const row = document.createElement("div");
+    row.className = "ban";
+    const left = document.createElement("div");
+    left.style.cssText = "display:flex;align-items:center;gap:8px;min-width:0";
+    const nm = document.createElement("span");
+    nm.textContent = (u.name || "مستخدم") + (uid === grp.owner ? " (المنشئ)" : "");
+    left.append(avatarEl(u.photo, u.name, "", uid), nm);
+    row.appendChild(left);
+    if (own && uid !== me.uid) {
+      row.appendChild(miniBtn("إزالة", () => {
+        if (!confirm("إزالة " + (u.name || "هذا العضو") + " من المجموعة؟")) return;
+        updateDoc(doc(db, "groups", grp.id), { members: arrayRemove(uid) })
+          .catch((e) => { console.error(e); giNote("تعذرت الإزالة.", false); });
+      }));
+    }
+    box.appendChild(row);
+  });
+}
+
+$("gInfoBtn").addEventListener("click", () => { giNote("", true); drawGInfo(); $("ginfo").classList.remove("hidden"); });
+$("giClose").addEventListener("click", closeGInfo);
+$("ginfo").addEventListener("click", (e) => { if (e.target === $("ginfo")) closeGInfo(); });
+
+$("giAddBtn").addEventListener("click", async () => {
+  const uname = $("giUser").value.trim().toLowerCase().replace(/^@/, "");
+  if (!uname || !grp) return;
+  try {
+    const s = await getDoc(doc(db, "usernames", uname));
+    if (!s.exists()) { giNote("اسم المستخدم غير موجود.", false); return; }
+    const uid = s.data().uid;
+    if (grp.members.includes(uid)) { giNote("هذا الشخص عضو من قبل.", false); return; }
+    await updateDoc(doc(db, "groups", grp.id), { members: arrayUnion(uid) });
+    $("giUser").value = "";
+    giNote("تمت الإضافة.", true);
+  } catch (e) {
+    console.error(e);
+    giNote("تعذرت الإضافة.", false);
+  }
+});
+
+$("giLeave").addEventListener("click", async () => {
+  if (!grp || !confirm("مغادرة المجموعة؟")) return;
+  const id = grp.id;
+  setMode("groups");
+  try { await updateDoc(doc(db, "groups", id), { members: arrayRemove(me.uid) }); }
+  catch (e) { console.error(e); alert("تعذرت المغادرة."); }
+});
+
+$("giDelete").addEventListener("click", async () => {
+  if (!grp || !confirm("حذف المجموعة نهائياً؟ ما يمكن التراجع.")) return;
+  const id = grp.id;
+  setMode("groups");
+  try { await deleteDoc(doc(db, "groups", id)); }
+  catch (e) { console.error(e); alert("تعذر الحذف."); }
+});
+
+function leftGroup() {
+  if (mode !== "group") return;
+  alert("لم تعد عضواً في هذه المجموعة، أو تم حذفها.");
+  setMode("groups");
+}
 
 /* ---------- بطاقة الملف الشخصي ---------- */
 function drawModalStatus() {
@@ -708,9 +921,12 @@ $("mMsg").addEventListener("click", () => {
 });
 $("mClose").addEventListener("click", closeModal);
 $("modal").addEventListener("click", (e) => { if (e.target === $("modal")) closeModal(); });
-$("title").addEventListener("click", () => { if (mode === "dm" && peer) openProfile(peer.uid); });
+$("title").addEventListener("click", () => {
+  if (mode === "dm" && peer) openProfile(peer.uid);
+  else if (mode === "group") $("gInfoBtn").click();
+});
 
-/* ---------- الملف الشخصي (حسابي) ---------- */
+/* ---------- حسابي ---------- */
 function drawPfAvatar() {
   const box = $("pfAv");
   box.textContent = "";
@@ -795,61 +1011,78 @@ $("pfSave").addEventListener("click", async () => {
 /* ---------- التنقل ---------- */
 function setMode(m, p) {
   mode = m;
-  peer = p || null;
+  peer = m === "dm" ? p : null;
+  grp = m === "group" ? p : null;
   if (unsubMsgs) { unsubMsgs(); unsubMsgs = null; }
+  if (unsubGrp) { unsubGrp(); unsubGrp = null; }
   lastMsgSnap = null;
   clearPending();
-  const chatLike = m === "public" || m === "dm" || m === "saved";
-  $("tabPub").classList.toggle("on", m === "public");
+  closeGInfo();
+  const chatLike = m === "public" || m === "dm" || m === "saved" || m === "group";
+  $("tabPub").classList.toggle("on", m === "groups" || m === "group" || m === "public");
   $("tabPriv").classList.toggle("on", m === "people" || m === "dm");
   $("tabSaved").classList.toggle("on", m === "saved");
   $("tabProf").classList.toggle("on", m === "profile");
+  $("groups").classList.toggle("hidden", m !== "groups");
   $("people").classList.toggle("hidden", m !== "people");
   $("profile").classList.toggle("hidden", m !== "profile");
   $("list").classList.toggle("hidden", !chatLike);
   $("send").classList.toggle("hidden", !chatLike);
-  $("back").classList.toggle("hidden", m !== "dm");
+  $("back").classList.toggle("hidden", !(m === "dm" || m === "group" || m === "public"));
+  $("gInfoBtn").classList.toggle("hidden", m !== "group");
   $("adminBtn").classList.toggle("hidden", !(isAdmin && m === "public"));
   if (m !== "public") $("panel").classList.add("hidden");
-  $("title").textContent = ({ public: "الدردشة العامة", people: "الرسائل الخاصة",
-    saved: "الرسائل المحفوظة", profile: "حسابي" })[m] || peer.name;
+  $("title").textContent = ({ groups: "المجموعات", public: "الدردشة العامة", people: "الرسائل الخاصة",
+    saved: "الرسائل المحفوظة", profile: "حسابي" })[m] || (m === "group" ? grp.name : peer.name);
   $("text").disabled = false;
   $("list").textContent = "";
   if (m === "profile") fillProfile();
 
-  let q = null, opts = null;
+  let q = null;
   if (m === "public") {
     q = query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(50));
-    opts = { admin: isAdmin };
   } else if (m === "dm") {
     q = query(collection(db, "chats", chatIdWith(peer.uid), "messages"), orderBy("createdAt", "desc"), limit(50));
-    opts = {};
   } else if (m === "saved") {
     q = query(collection(db, "users", me.uid, "saved"), orderBy("createdAt", "desc"), limit(50));
-    opts = { saved: true };
+  } else if (m === "group") {
+    q = query(collection(db, "groups", grp.id, "messages"), orderBy("createdAt", "desc"), limit(50));
+    unsubGrp = onSnapshot(doc(db, "groups", grp.id), (s) => {
+      if (!s.exists()) { leftGroup(); return; }
+      grp = gdoc(s);
+      $("title").textContent = grp.name;
+      updateSub();
+      if (!$("ginfo").classList.contains("hidden")) drawGInfo();
+      if (lastMsgSnap) renderMsgs(lastMsgSnap, curOpts());
+    }, () => leftGroup());
   }
-  if (q) unsubMsgs = onSnapshot(q, (snap) => renderMsgs(snap, opts), (err) => { console.error(err); showDenied(); });
+  if (q) unsubMsgs = onSnapshot(q, (snap) => renderMsgs(snap, curOpts()), (err) => { console.error(err); showDenied(); });
   updateSub();
 }
 
-$("tabPub").addEventListener("click", () => setMode("public"));
+$("tabPub").addEventListener("click", () => setMode("groups"));
 $("tabPriv").addEventListener("click", () => setMode("people"));
 $("tabSaved").addEventListener("click", () => setMode("saved"));
 $("tabProf").addEventListener("click", () => setMode("profile"));
-$("back").addEventListener("click", () => setMode("people"));
+$("back").addEventListener("click", () => setMode(mode === "dm" ? "people" : "groups"));
 
 function stopAll() {
-  [unsubMsgs, unsubBan, unsubUsers, unsubInbox, unsubPres].forEach((u) => { if (u) u(); });
-  unsubMsgs = unsubBan = unsubUsers = unsubInbox = unsubPres = null;
+  [unsubMsgs, unsubBan, unsubUsers, unsubInbox, unsubPres, unsubMyG, unsubPubG, unsubGrp].forEach((u) => { if (u) u(); });
+  unsubMsgs = unsubBan = unsubUsers = unsubInbox = unsubPres = unsubMyG = unsubPubG = unsubGrp = null;
   stopBeat();
   usersMap = {};
   presenceMap = {};
+  myGroups = [];
+  pubGroups = [];
+  grp = null;
+  peer = null;
   lastMsgSnap = lastInboxSnap = null;
 }
 
 onAuthStateChanged(auth, async (user) => {
   stopAll();
   closeModal();
+  closeGInfo();
   me = user;
   isAdmin = false;
   clearPending();
@@ -857,6 +1090,7 @@ onAuthStateChanged(auth, async (user) => {
   $("chat").classList.toggle("hidden", !user);
   $("panel").classList.add("hidden");
   if (!user) return;
+  mode = "groups";
   updateSub();
 
   try { isAdmin = (await getDoc(doc(db, "admins", user.uid))).exists(); } catch (e) {}
@@ -875,6 +1109,10 @@ onAuthStateChanged(auth, async (user) => {
   if (isAdmin) unsubBan = onSnapshot(collection(db, "banned"), renderBanned, console.error);
   unsubUsers = onSnapshot(collection(db, "users"), renderUsers, console.error);
   unsubInbox = onSnapshot(collection(db, "users", user.uid, "inbox"), renderInbox, console.error);
+  unsubMyG = onSnapshot(query(collection(db, "groups"), where("members", "array-contains", user.uid)),
+    (snap) => { myGroups = snap.docs.map(gdoc); renderGroups(); }, console.error);
+  unsubPubG = onSnapshot(query(collection(db, "groups"), where("type", "==", "public"), limit(50)),
+    (snap) => { pubGroups = snap.docs.map(gdoc); renderGroups(); }, console.error);
   unsubPres = onSnapshot(collection(db, "presence"), (snap) => {
     presenceMap = {};
     snap.forEach((d) => {
@@ -884,7 +1122,8 @@ onAuthStateChanged(auth, async (user) => {
     refreshPresenceUI();
   }, console.error);
   startBeat();
-  setMode("public");
+  renderGroups();
+  setMode("groups");
 });
 
 /* ---------- الإرسال ---------- */
@@ -902,14 +1141,18 @@ $("send").addEventListener("submit", async (e) => {
   clearPending();
   try {
     const b = writeBatch(db);
+    const bump = () => b.update(doc(db, "users", me.uid), { msgCount: increment(1) });
     if (mode === "public") {
       b.set(doc(collection(db, "messages")), msg);
-      b.update(doc(db, "users", me.uid), { msgCount: increment(1) });
+      bump();
+    } else if (mode === "group" && grp) {
+      b.set(doc(collection(db, "groups", grp.id, "messages")), msg);
+      bump();
     } else if (mode === "dm" && peer) {
       b.set(doc(collection(db, "chats", chatIdWith(peer.uid), "messages")), msg);
       b.set(doc(db, "users", peer.uid, "inbox", me.uid), { name: myName(), text: preview, at: serverTimestamp() });
       b.set(doc(db, "users", me.uid, "inbox", peer.uid), { name: peer.name, text: preview, at: serverTimestamp() });
-      b.update(doc(db, "users", me.uid), { msgCount: increment(1) });
+      bump();
     } else if (mode === "saved") {
       b.set(doc(collection(db, "users", me.uid, "saved")), msg);
     } else { return; }
