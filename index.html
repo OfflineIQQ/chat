@@ -76,9 +76,15 @@ header small.on,#mStatus.on{color:#16a34a}
 .line.mine .msg{background:var(--accent);color:var(--accent-text);border-color:transparent}
 .msg .who{font-size:12px;font-weight:700;opacity:.85;margin-bottom:2px}
 .msg .who span{font-weight:400;opacity:.8}
-.msg .who .lvb{font-size:10px;font-weight:700;background:var(--accent);color:var(--accent-text);border-radius:6px;padding:0 5px;margin-inline-start:4px;opacity:1}
-.line.mine .who .lvb{background:var(--accent-text);color:var(--accent)}
-.msg .who .lvb.max,.line.mine .who .lvb.max{background:#f59e0b;color:#1a1200}
+.lvb{position:relative;display:inline-block;font-size:10px;font-weight:700;line-height:1.5;border-radius:6px;padding:0 5px}
+.msg .who .lvb{margin-inline-start:4px;opacity:1;font-weight:700}
+.lvb.big{font-size:14px;padding:3px 12px;border-radius:10px}
+.lvb.max{box-shadow:0 0 8px 1px rgba(220,38,38,.65)}
+.sp{position:absolute;left:50%;top:50%;width:3px;height:3px;border-radius:50%;background:#fbbf24;pointer-events:none;opacity:0;animation:spk 1.4s ease-out infinite}
+.sp:nth-child(2n){background:#f97316}
+.sp:nth-child(3n){background:#fff}
+@keyframes spk{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.2)}}
+@media (prefers-reduced-motion:reduce){.sp{display:none}}
 .msg img{display:block;max-width:100%;max-height:280px;border-radius:10px;margin-top:4px}
 .msg a{color:inherit;text-decoration:underline;display:block;margin-top:4px}
 .bar{display:flex;gap:6px;margin-top:6px}
@@ -240,7 +246,7 @@ header small.on,#mStatus.on{color:#16a34a}
     <div id="mStatus"></div>
     <div id="mBio"></div>
     <div class="lv">
-      <b id="mLvl"></b>
+      <span id="mLvl" class="lvb big"></span>
       <div class="bar2"><i id="mBar"></i></div>
       <div id="mCnt"></div>
     </div>
@@ -315,6 +321,42 @@ function note(id, text, ok) {
   const m = $(id);
   m.textContent = text;
   m.className = ok ? "ok" : "bad";
+}
+
+/* ---------- ألوان المستويات ---------- */
+const PAL = [
+  ["#16a34a", "#fff"], ["#0891b2", "#fff"], ["#2563eb", "#fff"], ["#7c3aed", "#fff"],
+  ["#db2777", "#fff"], ["#ea580c", "#fff"], ["#f59e0b", "#1a1200"], ["#0d9488", "#fff"],
+  ["#9333ea", "#fff"], ["#65a30d", "#fff"], ["#0284c7", "#fff"]
+];
+const VEC = [[-16, -14], [14, -16], [-20, 2], [20, 4], [-6, -20], [8, 14], [-12, 12]];
+
+function tierOf(li) {
+  if (li.max) return { bg: "#7f1d1d", fg: "#fff", max: true };
+  const t = Math.floor(li.lv / 15);
+  if (t === 0) return { bg: "#ffffff", fg: "#1f2937", bd: "1px solid #cbd5e1" };
+  const p = PAL[(t - 1) % PAL.length];
+  return { bg: p[0], fg: p[1] };
+}
+
+function paintBadge(el, li, label, extra) {
+  const c = tierOf(li);
+  el.className = "lvb" + (extra ? " " + extra : "") + (c.max ? " max" : "");
+  el.textContent = label;
+  el.style.background = c.bg;
+  el.style.color = c.fg;
+  el.style.border = c.bd || "";
+  if (c.max) {
+    VEC.forEach((v, i) => {
+      const s = document.createElement("i");
+      s.className = "sp";
+      s.style.setProperty("--dx", v[0] + "px");
+      s.style.setProperty("--dy", v[1] + "px");
+      s.style.animationDelay = (i * 0.2) + "s";
+      el.appendChild(s);
+    });
+  }
+  return c;
 }
 
 /* ---------- الحالة (متصل / آخر ظهور) ---------- */
@@ -565,8 +607,7 @@ function renderMsgs(snap, opts) {
       }
       const li = lvlInfo(u);
       const lb = document.createElement("span");
-      lb.className = "lvb" + (li.max ? " max" : "");
-      lb.textContent = "Lv " + li.lv;
+      paintBadge(lb, li, "Lv " + li.lv);
       who.appendChild(lb);
       who.style.cursor = "pointer";
       who.onclick = () => openProfile(m.uid);
@@ -859,6 +900,13 @@ function drawModalStatus() {
   const u = usersMap[modalUid] || {};
   $("mAv").textContent = "";
   $("mAv").appendChild(avatarEl(u.photo, u.name, "big", modalUid, true));
+  const c = tierOf(lvlInfo(u));
+  const av = $("mAv").querySelector(".av");
+  if (av) {
+    av.style.boxShadow = c.max
+      ? "0 0 0 3px #7f1d1d, 0 0 12px 2px rgba(220,38,38,.6)"
+      : (c.bd ? "none" : "0 0 0 3px " + c.bg);
+  }
 }
 
 function drawFollow() {
@@ -884,8 +932,9 @@ async function openProfile(uid) {
   $("mName").textContent = u.name || "مستخدم";
   $("mUser").textContent = u.username ? "@" + u.username : "";
   $("mBio").textContent = u.bio || "";
-  $("mLvl").textContent = li.max ? "المستوى " + MAXLV + " (الأقصى) 🏆" : "المستوى " + li.lv;
+  const c = paintBadge($("mLvl"), li, li.max ? "Lv " + MAXLV + " 🏆" : "Lv " + li.lv, "big");
   $("mBar").style.width = li.pct + "%";
+  $("mBar").style.background = c.max ? "#7f1d1d" : (c.bd ? "" : c.bg);
   $("mCnt").textContent = li.max ? "وصل للحد الأقصى" : li.cur + " / " + LV + " رسالة للمستوى التالي";
   $("mFers").textContent = "…";
   $("mFing").textContent = "…";
@@ -961,9 +1010,14 @@ function drawPfAvatar() {
 
 function drawLvl() {
   const li = lvlInfo(usersMap[me.uid] || {});
-  $("pfLvl").textContent = li.max
-    ? "المستوى " + MAXLV + " (الأقصى) 🏆"
-    : "المستوى " + li.lv + " - " + li.cur + " / " + LV + " رسالة للمستوى التالي";
+  const box = $("pfLvl");
+  box.textContent = "";
+  const b = document.createElement("span");
+  paintBadge(b, li, "Lv " + li.lv + (li.max ? " 🏆" : ""), "big");
+  const t = document.createElement("span");
+  t.style.marginInlineStart = "8px";
+  t.textContent = li.max ? "المستوى الأقصى" : li.cur + " / " + LV + " رسالة للمستوى التالي";
+  box.append(b, t);
 }
 
 function fillProfile() {
@@ -1161,46 +1215,4 @@ function setMode(m, p) {
   $("tabProf").classList.toggle("on", m === "profile");
   $("groups").classList.toggle("hidden", m !== "groups");
   $("people").classList.toggle("hidden", m !== "people");
-  $("profile").classList.toggle("hidden", m !== "profile");
-  $("list").classList.toggle("hidden", !chatLike);
-  $("send").classList.toggle("hidden", !chatLike);
-  $("back").classList.toggle("hidden", !(m === "dm" || m === "group" || m === "public"));
-  $("gInfoBtn").classList.toggle("hidden", m !== "group");
-  $("adminBtn").classList.toggle("hidden", !(isAdmin && m === "public"));
-  if (m !== "public") $("panel").classList.add("hidden");
-  $("title").textContent = ({ groups: "المجموعات", public: "الدردشة العامة", people: "الرسائل الخاصة",
-    saved: "الرسائل المحفوظة", profile: "حسابي" })[m] || (m === "group" ? grp.name : peer.name);
-  $("text").disabled = false;
-  $("list").textContent = "";
-  if (m === "profile") fillProfile();
-
-  let q = null;
-  if (m === "public") {
-    q = query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(50));
-  } else if (m === "dm") {
-    q = query(collection(db, "chats", chatIdWith(peer.uid), "messages"), orderBy("createdAt", "desc"), limit(50));
-  } else if (m === "saved") {
-    q = query(collection(db, "users", me.uid, "saved"), orderBy("createdAt", "desc"), limit(50));
-  } else if (m === "group") {
-    q = query(collection(db, "groups", grp.id, "messages"), orderBy("createdAt", "desc"), limit(50));
-    unsubGrp = onSnapshot(doc(db, "groups", grp.id), (s) => {
-      if (!s.exists()) { leftGroup(); return; }
-      grp = gdoc(s);
-      $("title").textContent = grp.name;
-      updateSub();
-      if (!$("ginfo").classList.contains("hidden")) drawGInfo();
-      if (lastMsgSnap) renderMsgs(lastMsgSnap, curOpts());
-    }, () => leftGroup());
-  }
-  if (q) unsubMsgs = onSnapshot(q, (snap) => renderMsgs(snap, curOpts()), (err) => { console.error(err); showDenied(); });
-  updateSub();
-}
-
-$("tabPub").addEventListener("click", () => setMode("groups"));
-$("tabPriv").addEventListener("click", () => setMode("people"));
-$("tabSaved").addEventListener("click", () => setMode("saved"));
-$("tabProf").addEventListener("click", () => setMode("profile"));
-$("back").addEventListener("click", () => setMode(mode === "dm" ? "people" : "groups"));
-
-function stopAll() {
-  [unsubMsgs, unsubBan, unsubUsers, uns
+  $("profil
