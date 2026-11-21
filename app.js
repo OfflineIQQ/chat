@@ -1093,3 +1093,323 @@ $("send").addEventListener("submit", async (e) => {
 });
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+/* ===== بداية الإضافات: الردود والإشعارات ===== */
+(function () {
+  var ls = function (k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+  var sv = function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} };
+  var PN = { snd: ls("pn_snd", "1"), pub: ls("pn_pub", "0") };
+  var INIT = +ls("rd_init", 0);
+  if (!INIT) { INIT = Date.now(); sv("rd_init", String(INIT)); }
+  var reply = null, unread = {}, watching = {}, subs = [], ac = null, tt = null;
+
+  var st = document.createElement("style");
+  st.textContent = [
+    ".quote{border-inline-start:3px solid currentColor;padding:2px 8px;margin-bottom:4px;font-size:12px;opacity:.85;border-radius:4px;background:rgba(127,127,127,.18);overflow-wrap:anywhere}",
+    "#rpl{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 12px;background:var(--card);border-top:1px solid var(--line);color:var(--muted);font-size:14px}",
+    "#rpl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+    ".ndot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#e11d2e;margin-inline-start:4px;vertical-align:middle}",
+    "#pnToast{display:none;position:fixed;z-index:30;top:calc(env(safe-area-inset-top,0px) + 8px);left:8px;right:8px;max-width:640px;margin:0 auto;background:var(--card);color:var(--text);border:1px solid var(--line);border-inline-start:4px solid var(--accent);border-radius:12px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.25);cursor:pointer}",
+    "#pnBox{display:grid;gap:8px;margin-top:8px}",
+    "#pnBox h2{margin:12px 0 4px;font-size:16px}",
+    "#pnState{font-size:14px;color:var(--muted)}",
+    ".pnrow{display:flex;align-items:center;gap:8px;color:var(--text)!important;font-size:15px!important;margin-top:0!important}",
+    ".pnrow input{width:auto}"
+  ].join("");
+  document.head.appendChild(st);
+
+  /* ---------- أدوات ---------- */
+  function getRead(k) { return Math.max(INIT, +ls("rd_" + k, 0)); }
+  function curKey() {
+    if (mode === "public") return "pub";
+    if (mode === "group" && grp) return "g:" + grp.id;
+    if (mode === "dm" && peer) return "dm:" + peer.uid;
+    return null;
+  }
+  function stripQuote(t) { var x = /^↪ [^\n]*\n([\s\S]*)$/.exec(t || ""); return x ? x[1] : (t || ""); }
+  function preview(m) {
+    var t = stripQuote(m.text).replace(/\s+/g, " ").trim();
+    if (t) return t;
+    return m.image ? "📷 صورة" : (m.fileData ? "📎 " + (m.fileName || "ملف") : "");
+  }
+  function dot(el, on) {
+    if (!el) return;
+    var d = el.querySelector(".ndot");
+    if (on && !d) { d = document.createElement("i"); d.className = "ndot"; el.appendChild(d); }
+    else if (!on && d) d.remove();
+  }
+  function anyKey(p) { return Object.keys(unread).some(function (k) { return k.indexOf(p) === 0; }); }
+  function badge(el) {
+    var b = document.createElement("span");
+    b.className = "tag";
+    b.style.background = "#d11a2a";
+    b.style.color = "#fff";
+    b.textContent = "جديد";
+    el.appendChild(b);
+  }
+  function paint() {
+    var n = Object.keys(unread).length;
+    document.title = (n ? "(" + n + ") " : "") + "Al-janabi Chat";
+    try {
+      if (navigator.setAppBadge) {
+        var p = n ? navigator.setAppBadge(n) : navigator.clearAppBadge();
+        if (p && p.catch) p.catch(function () {});
+      }
+    } catch (e) {}
+    dot($("tabPriv"), anyKey("dm:"));
+    dot($("tabPub"), anyKey("g:") || !!unread.pub);
+    if (me) { renderGroups(); if (lastInboxSnap) renderInbox(lastInboxSnap); }
+  }
+  function markRead(k) {
+    sv("rd_" + k, String(Date.now()));
+    if (unread[k]) { delete unread[k]; paint(); }
+  }
+
+  /* ---------- صوت وتنبيه ---------- */
+  function unlock() {
+    try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); } catch (e) {}
+  }
+  document.addEventListener("pointerdown", unlock);
+  function beep() {
+    if (PN.snd !== "1" || !ac) return;
+    try {
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = "sine"; o.frequency.value = 880;
+      o.connect(g); g.connect(ac.destination);
+      g.gain.setValueAtTime(.12, ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001, ac.currentTime + .25);
+      o.start(); o.stop(ac.currentTime + .25);
+    } catch (e) {}
+  }
+  function toast(title, body, key) {
+    var t = $("pnToast");
+    if (!t) { t = document.createElement("div"); t.id = "pnToast"; document.body.appendChild(t); }
+    t.textContent = "";
+    var a = document.createElement("b"); a.textContent = title;
+    var b = document.createElement("div"); b.textContent = body;
+    t.append(a, b);
+    t.style.display = "block";
+    t.onclick = function () { t.style.display = "none"; openKey(key); };
+    clearTimeout(tt);
+    tt = setTimeout(function () { t.style.display = "none"; }, 5000);
+  }
+  function showSys(title, body, key) {
+    if (!window.Notification || Notification.permission !== "granted" || !navigator.serviceWorker) return;
+    navigator.serviceWorker.getRegistration().then(function (r) {
+      if (r) r.showNotification(title, { body: body, tag: key, renotify: true, vibrate: [80, 40, 80], data: { key: key } });
+    }).catch(function () {});
+  }
+  function alertUser(label, m, key) {
+    beep();
+    if (navigator.vibrate) navigator.vibrate(60);
+    var body = (m.name || "") + ": " + preview(m);
+    if (document.visibilityState === "visible") toast(label, body, key); else showSys(label, body, key);
+  }
+  function openKey(key) {
+    if (!me || !key) return;
+    if (key === "pub") { setMode("public"); return; }
+    if (key.indexOf("g:") === 0) {
+      var g = myGroups.filter(function (x) { return x.id === key.slice(2); })[0];
+      if (g) setMode("group", g);
+      return;
+    }
+    if (key.indexOf("dm:") === 0) {
+      var uid = key.slice(3), u = usersMap[uid] || {};
+      setMode("dm", { uid: uid, name: u.name || "مستخدم" });
+    }
+  }
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener("message", function (e) { if (e.data && e.data.open) openKey(e.data.open); });
+  }
+
+  /* ---------- مراقبة الرسائل الجديدة ---------- */
+  function watch(key, label, q) {
+    if (watching[key] || Object.keys(watching).length >= 40) return;
+    var first = true, lastId = "";
+    watching[key] = onSnapshot(q, function (snap) {
+      var d = snap.docs[0];
+      if (!d) return;
+      var m = d.data({ serverTimestamps: "estimate" });
+      var uid = auth.currentUser && auth.currentUser.uid;
+      var ts = m.createdAt && m.createdAt.toMillis ? m.createdAt.toMillis() : Date.now();
+      if (first) {
+        first = false; lastId = d.id;
+        if (m.uid !== uid && ts > getRead(key) && curKey() !== key) { unread[key] = true; paint(); }
+        return;
+      }
+      if (d.id === lastId) return;
+      lastId = d.id;
+      if (m.uid === uid) return;
+      if (curKey() === key && document.visibilityState === "visible") { sv("rd_" + key, String(Date.now())); return; }
+      unread[key] = true;
+      paint();
+      alertUser(label, m, key);
+    }, function () { if (watching[key]) { watching[key](); delete watching[key]; } });
+  }
+  function watchPub() {
+    watch("pub", "الدردشة العامة", query(collection(db, "messages"), orderBy("createdAt", "desc"), limit(1)));
+  }
+  function startNotif(u) {
+    subs.push(onSnapshot(collection(db, "users", u.uid, "inbox"), function (s) {
+      s.forEach(function (d) {
+        watch("dm:" + d.id, d.data().name || "رسالة خاصة",
+          query(collection(db, "chats", [u.uid, d.id].sort().join("_"), "messages"), orderBy("createdAt", "desc"), limit(1)));
+      });
+    }, function () {}));
+    subs.push(onSnapshot(query(collection(db, "groups"), where("members", "array-contains", u.uid)), function (s) {
+      s.forEach(function (d) {
+        watch("g:" + d.id, d.data().name || "مجموعة",
+          query(collection(db, "groups", d.id, "messages"), orderBy("createdAt", "desc"), limit(1)));
+      });
+    }, function () {}));
+    if (PN.pub === "1") watchPub();
+  }
+  function stopNotif() {
+    subs.forEach(function (f) { f(); });
+    subs = [];
+    Object.keys(watching).forEach(function (k) { watching[k](); });
+    watching = {};
+    unread = {};
+    paint();
+  }
+  onAuthStateChanged(auth, function (u) {
+    stopNotif();
+    if (u) startNotif(u); else clearReply();
+  });
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") { var k = curKey(); if (k) markRead(k); }
+  });
+
+  /* ---------- الرد على رسالة ---------- */
+  var rp = document.createElement("div");
+  rp.id = "rpl"; rp.className = "hidden";
+  var rt = document.createElement("span"); rt.id = "rplT";
+  var rx = document.createElement("button");
+  rx.type = "button"; rx.className = "mini"; rx.textContent = "إلغاء";
+  rx.onclick = function () { clearReply(); };
+  rp.append(rt, rx);
+  $("chip").parentNode.insertBefore(rp, $("chip"));
+
+  function clearReply() { reply = null; rp.classList.add("hidden"); }
+  function setReply(m) {
+    var u = usersMap[m.uid] || {};
+    reply = { name: u.name || m.name || "مستخدم", text: preview(m).slice(0, 60) };
+    rt.textContent = "ردًا على " + reply.name + ": " + reply.text;
+    rp.classList.remove("hidden");
+    $("text").focus();
+  }
+  document.addEventListener("submit", function (e) {
+    if (!e.target || e.target.id !== "send" || !reply) return;
+    var v = $("text").value.trim();
+    if (v || pending) $("text").value = ("↪ " + reply.name + ": " + reply.text + "\n" + v).slice(0, 1000);
+    setTimeout(clearReply, 0);
+  }, true);
+
+  function decorate(snap, opts) {
+    if (snap.empty) return;
+    var docs = snap.docs.slice().reverse(), lines = $("list").children;
+    docs.forEach(function (d, i) {
+      var line = lines[i];
+      if (!line || !line.classList.contains("line")) return;
+      var box = line.querySelector(".msg");
+      if (!box) return;
+      var m = d.data({ serverTimestamps: "estimate" });
+      var mm = /^↪ ([^\n]*)\n([\s\S]*)$/.exec(m.text || "");
+      if (mm) {
+        for (var j = 0; j < box.children.length; j++) {
+          var ch = box.children[j];
+          if (ch.tagName === "DIV" && ch.textContent === m.text && !ch.classList.contains("who") && !ch.classList.contains("bar")) {
+            ch.textContent = "";
+            var q = document.createElement("div");
+            q.className = "quote"; q.textContent = mm[1];
+            ch.appendChild(q);
+            if (mm[2]) { var r = document.createElement("div"); r.textContent = mm[2]; ch.appendChild(r); }
+            break;
+          }
+        }
+      }
+      if (!opts.saved) {
+        var bar = box.querySelector(".bar");
+        if (bar) bar.insertBefore(miniBtn("رد", function () { setReply(m); }), bar.firstChild);
+      }
+    });
+  }
+
+  /* ---------- ربط الإضافات بالتطبيق ---------- */
+  var _renderMsgs = renderMsgs;
+  renderMsgs = function (snap, opts) { _renderMsgs(snap, opts); decorate(snap, opts); };
+
+  var _renderInbox = renderInbox;
+  renderInbox = function (snap) {
+    _renderInbox(snap);
+    var rows = [];
+    snap.forEach(function (d) {
+      var m = d.data({ serverTimestamps: "estimate" });
+      rows.push({ id: d.id, t: m.at && m.at.toMillis ? m.at.toMillis() : 0 });
+    });
+    rows.sort(function (a, b) { return b.t - a.t; });
+    var kids = $("inboxList").children;
+    rows.forEach(function (r, i) { if (kids[i] && unread["dm:" + r.id]) badge(kids[i]); });
+  };
+
+  var _renderGroups = renderGroups;
+  renderGroups = function () {
+    _renderGroups();
+    if (!me) return;
+    var kids = $("myGroups").children;
+    if (kids[0] && unread.pub) badge(kids[0]);
+    myGroups.slice().sort(function (a, b) { return (a.name || "").localeCompare(b.name || ""); }).forEach(function (g, i) {
+      if (kids[i + 1] && unread["g:" + g.id]) badge(kids[i + 1]);
+    });
+  };
+
+  var _setMode = setMode;
+  setMode = function (m, p) {
+    _setMode(m, p);
+    clearReply();
+    var k = curKey();
+    if (k) markRead(k);
+  };
+
+  /* ---------- إعدادات الإشعارات في تبويب حسابي ---------- */
+  function buildSettings() {
+    var p = $("profile");
+    if (!p || $("pnBox")) return;
+    var box = document.createElement("div");
+    box.id = "pnBox";
+    var h = document.createElement("h2"); h.textContent = "الإشعارات";
+    var s = document.createElement("div"); s.id = "pnState";
+    var b1 = document.createElement("button"); b1.type = "button"; b1.className = "primary"; b1.textContent = "تفعيل إشعارات الجهاز";
+    var b2 = document.createElement("button"); b2.type = "button"; b2.className = "ghost"; b2.textContent = "تجربة إشعار";
+    function state() {
+      s.textContent = !window.Notification ? "غير مدعومة بهذا المتصفح. على الآيفون ثبّت التطبيق على الشاشة الرئيسية أولاً."
+        : Notification.permission === "granted" ? "إشعارات الجهاز مفعّلة."
+        : Notification.permission === "denied" ? "الإشعارات محظورة. فعّلها من إعدادات المتصفح لهذا الموقع."
+        : "إشعارات الجهاز غير مفعّلة.";
+    }
+    b1.onclick = function () {
+      if (window.Notification) { var r = Notification.requestPermission(); if (r && r.then) r.then(state); else state(); }
+    };
+    b2.onclick = function () {
+      if (window.Notification && Notification.permission === "granted") showSys("Al-janabi Chat", "إذا شفت هذي الرسالة فالإشعارات تعمل.", "test");
+      else alert("فعّل إشعارات الجهاز أولاً.");
+    };
+    function chk(text, key) {
+      var l = document.createElement("label"); l.className = "pnrow";
+      var i = document.createElement("input"); i.type = "checkbox"; i.checked = PN[key] === "1";
+      i.onchange = function () {
+        PN[key] = i.checked ? "1" : "0"; sv("pn_" + key, PN[key]);
+        if (key === "pub") {
+          if (i.checked) watchPub();
+          else if (watching.pub) { watching.pub(); delete watching.pub; delete unread.pub; paint(); }
+        }
+      };
+      l.append(i, document.createTextNode(text));
+      return l;
+    }
+    box.append(h, s, b1, b2, chk("صوت عند وصول رسالة", "snd"), chk("إشعارات الدردشة العامة", "pub"));
+    p.appendChild(box);
+    state();
+  }
+  buildSettings();
+})();
+/* ===== نهاية الإضافات ===== */
