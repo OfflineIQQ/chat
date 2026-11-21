@@ -1451,3 +1451,152 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   }, true);
 })();
 /* ===== نهاية تعديل الرد ===== */
+/* ===== بداية: رد بنمط واتساب + تفاعلات ===== */
+(function () {
+  var EM = ["😂", "❤️", "😮", "🥲", "💔", "🤔"];
+  var rep = null, rx = {}, unRx = null;
+
+  var st = document.createElement("style");
+  st.textContent = [
+    ".quote{display:block;border-inline-start:4px solid #a78bfa;padding:4px 8px;margin-bottom:6px;border-radius:6px;background:rgba(127,127,127,.2);font-size:13px;opacity:1}",
+    ".quote b{display:block;font-size:12px;color:#a78bfa;font-weight:700}",
+    ".line.mine .quote b{color:inherit}",
+    ".quote i{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-style:normal;opacity:.85}",
+    ".rxs{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}",
+    ".rxc{font-size:13px;padding:1px 7px;border-radius:12px;border:1px solid currentColor;background:rgba(127,127,127,.18);cursor:pointer}",
+    ".rxc.mine{background:rgba(167,139,250,.35)}",
+    ".rxp{display:flex;gap:2px;margin-top:6px;padding:4px;border-radius:20px;background:rgba(127,127,127,.25);width:max-content;max-width:100%}",
+    ".rxp button{background:transparent;border:0;font-size:22px;padding:2px 6px}"
+  ].join("");
+  document.head.appendChild(st);
+
+  function labelOf(uid) { var u = usersMap[uid] || {}; return u.username ? "@" + u.username : (u.name || "مستخدم"); }
+  function prev(m) {
+    var t = (m.text || "").replace(/^↪ [^\n]*\n/, "").replace(/\s+/g, " ").trim().slice(0, 60);
+    return t || (m.image ? "📷 صورة" : (m.fileData ? "📎 " + (m.fileName || "ملف") : ""));
+  }
+  function rkey() {
+    if (mode === "public") return "pub";
+    if (mode === "group" && grp) return "g_" + grp.id;
+    if (mode === "dm" && peer && me) return "d_" + [me.uid, peer.uid].sort().join("_");
+    return null;
+  }
+
+  function stopRx() { if (unRx) { unRx(); unRx = null; } rx = {}; }
+  function startRx() {
+    stopRx();
+    var k = rkey();
+    if (!k) return;
+    unRx = onSnapshot(query(collection(db, "reactions"), where("k", "==", k), limit(1000)), function (s) {
+      rx = {};
+      s.forEach(function (d) { var v = d.data(); (rx[v.m] = rx[v.m] || {})[v.uid] = v.e; });
+      drawRx();
+    }, function () {});
+  }
+
+  function react(mid, code) {
+    var k = rkey();
+    if (!k || !me) return;
+    var ref = doc(db, "reactions", mid + "_" + me.uid);
+    var cur = (rx[mid] || {})[me.uid];
+    var p = cur === code ? deleteDoc(ref) : setDoc(ref, { k: k, m: mid, uid: me.uid, e: code });
+    p.catch(function () { alert("تعذر التفاعل. تأكد من نشر القواعد الجديدة."); });
+  }
+
+  function drawRx() {
+    if (!me) return;
+    Array.prototype.forEach.call($("list").querySelectorAll(".line"), function (line) {
+      var mid = line.dataset.mid, box = line.querySelector(".msg");
+      if (!mid || !box) return;
+      var old = box.querySelector(".rxs");
+      if (old) old.remove();
+      var r = rx[mid];
+      if (!r) return;
+      var cnt = {}, mine = null;
+      Object.keys(r).forEach(function (u) {
+        cnt[r[u]] = (cnt[r[u]] || 0) + 1;
+        if (u === me.uid) mine = r[u];
+      });
+      var codes = Object.keys(cnt);
+      if (!codes.length) return;
+      var row = document.createElement("div");
+      row.className = "rxs";
+      codes.sort().forEach(function (c) {
+        var s = document.createElement("span");
+        s.className = "rxc" + (mine === c ? " mine" : "");
+        s.textContent = EM[+c - 1] + " " + cnt[c];
+        s.onclick = function () { react(mid, c); };
+        row.appendChild(s);
+      });
+      box.insertBefore(row, box.querySelector(".bar"));
+    });
+  }
+
+  function togglePick(box, mid) {
+    var ex = box.querySelector(".rxp");
+    if (ex) { ex.remove(); return; }
+    var p = document.createElement("div");
+    p.className = "rxp";
+    EM.forEach(function (e, i) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = e;
+      b.onclick = function () { p.remove(); react(mid, String(i + 1)); };
+      p.appendChild(b);
+    });
+    box.insertBefore(p, box.querySelector(".bar"));
+  }
+
+  var _rm = renderMsgs;
+  renderMsgs = function (snap, opts) {
+    _rm(snap, opts);
+    if (snap.empty) return;
+    var docs = snap.docs.slice().reverse(), lines = $("list").children;
+    docs.forEach(function (d, i) {
+      var line = lines[i];
+      if (!line || !line.classList.contains("line")) return;
+      var m = d.data({ serverTimestamps: "estimate" });
+      line.dataset.mid = d.id;
+      var box = line.querySelector(".msg"), bar = box && box.querySelector(".bar");
+      if (!bar) return;
+      Array.prototype.forEach.call(bar.querySelectorAll(".mini"), function (b) {
+        if (b.textContent === "رد") {
+          b.addEventListener("click", function () {
+            rep = { uid: m.uid, text: prev(m) };
+            var t = $("rplT");
+            if (t) t.textContent = "ردًا على " + labelOf(m.uid) + ": " + rep.text;
+          });
+        }
+      });
+      if (!opts.saved && rkey()) {
+        bar.insertBefore(miniBtn("😊", function () { togglePick(box, d.id); }), bar.firstChild);
+      }
+    });
+    Array.prototype.forEach.call($("list").querySelectorAll(".quote"), function (q) {
+      var s = q.textContent, k = s.indexOf(" ‖ "), n = 3;
+      if (k < 0) { k = s.indexOf(": "); n = 2; }
+      var nm = k < 0 ? s : s.slice(0, k), tx = k < 0 ? "" : s.slice(k + n);
+      q.textContent = "";
+      var b = document.createElement("b");
+      b.textContent = nm;
+      q.appendChild(b);
+      if (tx) { var i2 = document.createElement("i"); i2.textContent = tx; q.appendChild(i2); }
+    });
+    drawRx();
+  };
+
+  document.addEventListener("submit", function (e) {
+    if (!e.target || e.target.id !== "send" || !rep) return;
+    var v = $("text").value;
+    if (v.indexOf("↪ ") === 0) {
+      var nl = v.indexOf("\n");
+      if (nl > 0) $("text").value = ("↪ " + labelOf(rep.uid) + " ‖ " + rep.text + v.slice(nl)).slice(0, 1000);
+    }
+    rep = null;
+  }, true);
+
+  var _sm = setMode;
+  setMode = function (m, p) { _sm(m, p); rep = null; startRx(); };
+  onAuthStateChanged(auth, function (u) { if (!u) stopRx(); });
+})();
+/* ===== نهاية: رد بنمط واتساب + تفاعلات ===== */
