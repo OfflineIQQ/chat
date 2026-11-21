@@ -1413,3 +1413,41 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   buildSettings();
 })();
 /* ===== نهاية الإضافات ===== */
+/* ===== تعديل الرد: اليوزر فقط ===== */
+(function () {
+  var ruid = null;
+  function labelOf(uid) {
+    var u = usersMap[uid] || {};
+    return u.username ? "@" + u.username : (u.name || "مستخدم");
+  }
+  var _rm = renderMsgs;
+  renderMsgs = function (snap, opts) {
+    _rm(snap, opts);
+    if (snap.empty) return;
+    var docs = snap.docs.slice().reverse(), lines = $("list").children;
+    docs.forEach(function (d, i) {
+      var line = lines[i];
+      if (!line) return;
+      var uid = d.data().uid;
+      var btns = line.querySelectorAll(".bar .mini");
+      for (var j = 0; j < btns.length; j++) {
+        if (btns[j].textContent === "رد") {
+          btns[j].addEventListener("click", function () {
+            ruid = uid;
+            $("rplT").textContent = "ردًا على " + labelOf(uid);
+          });
+        }
+      }
+    });
+  };
+  document.addEventListener("submit", function (e) {
+    if (!e.target || e.target.id !== "send" || !ruid) return;
+    var v = $("text").value;
+    if (v.indexOf("↪ ") === 0) {
+      var nl = v.indexOf("\n");
+      if (nl > 0) $("text").value = ("↪ " + labelOf(ruid) + v.slice(nl)).slice(0, 1000);
+    }
+    ruid = null;
+  }, true);
+})();
+/* ===== نهاية تعديل الرد ===== */
